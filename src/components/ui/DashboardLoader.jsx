@@ -17,7 +17,7 @@ export default function DashboardLoader() {
 
         {/* Brand Logo/Text (Optional: Adds context) */}
         <p className="mt-6 text-lg font-semibold text-gray-700">
-          Loading Hookik Admin Data...
+          Loading Hookik Data...
         </p>
         <p className="text-sm text-gray-500">Fetching latest statistics.</p>
       </div>

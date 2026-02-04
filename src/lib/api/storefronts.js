@@ -22,6 +22,8 @@ export async function fetchStorefrontList(query = {}) {
     ...(query.filter && { filter: query.filter }),
     ...(query.search && { search: query.search }),
     ...(query.status && { status: query.status }),
+    ...(query.minProducts && { minProducts: query.minProducts }),
+    ...(query.maxProducts && { maxProducts: query.maxProducts }),
   });
 
   const res = await fetch(`${BASE_URL}/storefronts?${params.toString()}`, {
@@ -71,6 +73,31 @@ export async function updateStorefrontStatus(id, is_public) {
   }
 
   if (!res.ok) throw new Error("Failed to update storefront status");
+
+  return res.json();
+}
+// src/lib/api/storefronts.js
+
+// src/lib/api/storefronts.js
+
+export async function updateStorefront(id, payload) {
+  const token = localStorage.getItem("admin_token");
+
+  if (!token) throw new Error("Authentication token not found.");
+
+  const res = await fetch(`${BASE_URL}/storefronts/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || "Failed to update storefront");
+  }
 
   return res.json();
 }

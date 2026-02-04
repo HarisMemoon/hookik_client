@@ -11,6 +11,12 @@ import GenericFilterModal from "@/components/GenericFilterModal";
 import EditProductModal from "@/components/productModals/EditProductDeatils";
 import useProductList from "@/hooks/useProductList";
 import UserStatusModal from "@/components/userModals/UserStatusModal";
+import StatusCapsule from "@/components/ui/StatusCapsule";
+import { updateProductDetails } from "@/lib/api/products";
+import { toast } from "react-hot-toast";
+import { handleExport } from "@/lib/services/exportService";
+import useCategoryList from "@/hooks/useCategoryList";
+import useUserList from "@/hooks/useUserList";
 
 // ============================================================================
 // CONFIG
@@ -31,48 +37,18 @@ const allProductColumns = [
     sortable: true,
     className: "font-medium text-gray-900",
   },
-  { header: "Brand/Owner", key: "owner" },
-  { header: "Category", key: "category" },
-  { header: "Price", key: "price", sortable: true },
-  { header: "Stock", key: "stock" }, // Added to match mapped data
-  { header: "Status", key: "status" },
-];
-
-const productsFilterFields = [
+  { header: "Brand", key: "owner" },
   {
-    label: "Status",
-    type: "dropdown",
-    key: "status",
-    options: [
-      { label: "Verified", value: "verified" },
-      { label: "Pending", value: "pending" },
-      { label: "Suspended", value: "suspended" },
-    ],
-  },
-  {
-    label: "Category",
-    type: "dropdown",
+    header: "Category",
     key: "category",
-    options: [
-      { label: "Fashion", value: "fashion" },
-      { label: "Electronics", value: "electronics" },
-    ],
+    render: (_, row) => row.category.name || "Uncategorized",
   },
+  { header: "Price", key: "price", sortable: true },
   {
-    label: "Brand",
-    type: "dropdown",
-    key: "brand",
-    options: [
-      { label: "Fashion", value: "fashion" },
-      { label: "Electronics", value: "electronics" },
-    ],
-  },
-  {
-    label: "Price Rate",
-    type: "range",
-    minKey: "minPrice",
-    maxKey: "maxPrice",
-    disabled: true,
+    header: "Status",
+    key: "status",
+    sortable: true,
+    render: (_, row) => <StatusCapsule value={row.status} />,
   },
 ];
 
@@ -99,16 +75,79 @@ export default function ProductManagementPage() {
   });
 
   // 🔹 2. Fetch Real Data using the Hook
-  const { products, pagination, loading } = useProductList(
+  const {
+    products,
+    pagination,
+    loading: productsLoading,
+  } = useProductList(
     {
       filter: currentFilter,
       search: searchTerm || null,
       page: currentPage, //
       limit: 20, // Matches your default limit
+      status: filters.status,
+      category_id: filters.category, // Pass category ID
+      brand_id: filters.brand, // Pass brand user ID
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
     },
 
-    refreshKey
+    refreshKey,
   );
+  const { users: brandsList, loading: userLoading } = useUserList({
+    role: "seller",
+    limit: 100,
+  });
+  const { categories, categoriesLoading } = useCategoryList({ limit: 100 });
+  const onExportData = async (exportOptions) => {
+    await handleExport({
+      entityType: "productListings",
+      data: products,
+      format: exportOptions.format,
+      fields: exportOptions.fields,
+      selections: exportOptions.selections,
+      filename: `products_${new Date().toISOString().split("T")[0]}`,
+    });
+  };
+  console.log("brandsDet", brandsList);
+
+  const initialLoading = categoriesLoading || productsLoading || userLoading;
+
+  const productsFilterFields = [
+    {
+      label: "Status",
+      type: "dropdown",
+      key: "status",
+      options: [
+        { label: "Verified", value: "verified" },
+        { label: "Pending", value: "pending" },
+        { label: "Suspended", value: "suspended" },
+      ],
+    },
+    {
+      label: "Category",
+      type: "dropdown",
+      key: "category",
+      options: categories.map((c) => ({ label: c.name, value: c.id })),
+    },
+    {
+      label: "Brand",
+      type: "dropdown",
+      key: "brand",
+      // Map fetched sellers to the brand dropdown
+      options: brandsList.map((b) => ({
+        label: b.business_name || `${b.first_name} ${b.last_name}`,
+        value: b.id,
+      })),
+    },
+    {
+      label: "Price Rate",
+      type: "range",
+      minKey: "minPrice",
+      maxKey: "maxPrice",
+      disabled: false,
+    },
+  ];
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     // Scroll to top of table for better UX
@@ -124,6 +163,7 @@ export default function ProductManagementPage() {
     stock: p.quantity,
     status: p.status.charAt(0).toUpperCase() + p.status.slice(1),
   }));
+  console.log("products:", tableData);
 
   const handleProductAction = (action, row) => {
     setSelectedProduct(row);
@@ -160,6 +200,57 @@ export default function ProductManagementPage() {
       console.error("Failed to update status:", error);
     }
   };
+  const handleSaveProduct = async (updatedData) => {
+    console.log("=== HANDLE SAVE PRODUCT ===");
+    console.log("Received updatedData:", updatedData);
+
+    if (!updatedData) {
+      toast.error("No data received to update");
+      return;
+    }
+
+    try {
+      const { id, ...dataToUpdate } = updatedData;
+
+      // ✅ Sanitize the price - remove currency symbols and commas
+      if (dataToUpdate.price) {
+        // Remove currency symbols, commas, and other non-numeric chars except decimal point
+        dataToUpdate.price = dataToUpdate.price
+          .toString()
+          .replace(/[₦$,\s]/g, "") // Remove ₦, $, commas, spaces
+          .trim();
+
+        // Convert to number
+        dataToUpdate.price = parseFloat(dataToUpdate.price);
+
+        // Validate
+        if (isNaN(dataToUpdate.price)) {
+          toast.error("Invalid price format");
+          return;
+        }
+      }
+
+      // ✅ Ensure stock is a number
+      if (dataToUpdate.stock) {
+        dataToUpdate.stock = parseInt(dataToUpdate.stock, 10);
+      }
+
+      console.log("Sanitized data:", dataToUpdate);
+
+      if (!id) {
+        toast.error("Product ID is missing");
+        return;
+      }
+
+      await updateProductDetails(id, dataToUpdate);
+      toast.success("Product updated successfully!");
+      setRefreshKey((prev) => prev + 1);
+      setShowEditModal(false);
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error(error.message || "Failed to update product");
+    }
+  };
   const basePath = "/products";
   const pillItems = productFilters.map((f) => ({
     ...f,
@@ -192,12 +283,12 @@ export default function ProductManagementPage() {
         title={currentFilter === "all" ? "Complete Catalog" : "Review List"}
         columns={allProductColumns}
         data={tableData}
-        loading={loading} // 🔹 Table will show loading state
+        loading={initialLoading} // 🔹 Table will show loading state
         showSearch
         searchPlaceholder="Search by name or SKU..."
-        onSearch={(val) => {
+        onSearchChange={(val) => {
           setSearchTerm(val);
-          setCurrentPage(1); // 👈 Reset to page 1 on new search
+          setCurrentPage(1); // Reset to page 1 on search
         }} // 🔹 Connects search bar to state
         showFilter
         onFilterClick={() => setShowFilterModal(true)}
@@ -241,6 +332,7 @@ export default function ProductManagementPage() {
         title="Export Products"
         variant="products"
         config={exportConfigs["productListings"]}
+        onExport={onExportData}
       />
 
       <EditProductModal
@@ -251,12 +343,7 @@ export default function ProductManagementPage() {
           setSelectedProduct(null);
         }}
         product={selectedProduct}
-        onSave={(updatedData) => {
-          console.log("Saving product:", updatedData);
-          // 🔹 After successful API call:
-          // setRefreshKey(k => k + 1);
-          setShowEditModal(false);
-        }}
+        onSave={(id, updatedData) => handleSaveProduct(id, updatedData)}
       />
       <UserStatusModal
         open={disableOpen}

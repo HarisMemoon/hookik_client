@@ -11,7 +11,7 @@ export default function StatCard({
   const isPositive = change > 0;
   const ChangeArrow = isPositive ? ArrowUp : ArrowDown;
   const changeColor = isPositive ? "text-green-600" : "text-red-600";
-
+  const displayValue = String(value);
   return (
     <div
       className="p-5 rounded-2xl shadow-sm border border-gray-200 flex  space-x-3"
@@ -34,7 +34,9 @@ export default function StatCard({
         {/* Value + Change */}
         <div className="flex items-center space-x-3 mt-1">
           <div className={`text-3xl font-bold ${bgColor.textColor}`}>
-            {value.startsWith("N") ? value.replace("N", "$") : value}
+            {displayValue.startsWith("N")
+              ? displayValue.replace("N", "$")
+              : displayValue}
           </div>
 
           {/* {change !== undefined && (

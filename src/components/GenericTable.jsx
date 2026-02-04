@@ -1,19 +1,29 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
-import { MoreVertical, Search, Filter } from "lucide-react";
+import {
+  MoreVertical,
+  Search,
+  Filter,
+  ChevronRight,
+  ChevronLeft,
+} from "lucide-react";
 
 export default function GenericTable({
   title,
   columns,
   data,
   onActionClick,
+  iconActions,
   showSearch = false,
   showFilter = false,
+  onSearchChange,
   searchPlaceholder = "Search...",
   rowActions,
   onFilterClick,
+  roleManagementPage,
   searchableKeys,
+  supportAdmin,
   customRenderers = {},
   className = "",
   pagination,
@@ -24,7 +34,14 @@ export default function GenericTable({
   const [searchTerm, setSearchTerm] = useState("");
   const [menu, setMenu] = useState(null);
   const menuRef = useRef(null);
+  // Add this inside GenericTable.js
+  // useEffect(() => {
+  //   const handler = setTimeout(() => {
+  //     if (onSearchChange) onSearchChange(searchTerm);
+  //   }, 500); // Only search after 500ms of no typing
 
+  //   return () => clearTimeout(handler);
+  // }, [searchTerm]);
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -90,11 +107,13 @@ export default function GenericTable({
                     size={18}
                   />
                   <input
-                    className="pl-10 pr-4 py-2.5 w-64 text-sm bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 transition-all placeholder:text-gray-500"
+                    className="pl-10 pr-4 py-2.5 w-64 text-sm text-black bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-purple-100 focus:border-purple-400 transition-all placeholder:text-gray-500"
                     placeholder={searchPlaceholder}
                     value={searchTerm}
                     onChange={(e) => {
-                      setSearchTerm(e.target.value);
+                      const val = e.target.value;
+                      setSearchTerm(val);
+                      if (onSearchChange) onSearchChange(val); // ⚡ This sends the value to the parent
                     }}
                   />
                 </div>
@@ -147,20 +166,37 @@ export default function GenericTable({
                   >
                     {col.render
                       ? col.render(item[col.key], item, renderers)
-                      : item[col.key] ?? (
+                      : (item[col.key] ?? (
                           <span className="italic text-gray-300">
                             Not provided
                           </span>
-                        )}
+                        ))}
                   </td>
                 ))}
 
                 {showActions && (
                   <td className="px-6 py-4 text-center">
-                    {/* DROPDOWN VARIANT */}
-                    {actionsVariant === "dropdown" && (
-                      <div className="flex justify-center">
+                    <div className="flex justify-center items-center gap-1">
+                      {/* ICON ACTIONS (highest priority) */}
+                      {Array.isArray(iconActions) && iconActions.length > 0 ? (
+                        iconActions.map((action) => (
+                          <button
+                            key={action.key}
+                            type="button"
+                            onClick={() => onActionClick(action.key, item)}
+                            className={`p-2 rounded-lg transition-all ${
+                              action.danger
+                                ? "text-red-600 hover:bg-red-50"
+                                : "text-gray-600 hover:bg-gray-100 hover:text-purple-600"
+                            }`}
+                          >
+                            {action.icon}
+                          </button>
+                        ))
+                      ) : actionsVariant === "dropdown" ? (
+                        /* DROPDOWN (only if NO iconActions) */
                         <button
+                          type="button"
                           onClick={(e) => {
                             const rect =
                               e.currentTarget.getBoundingClientRect();
@@ -174,36 +210,36 @@ export default function GenericTable({
                         >
                           <MoreVertical size={18} />
                         </button>
-                      </div>
-                    )}
-
-                    {/* BUTTONS VARIANT */}
-                    {actionsVariant === "buttons" && (
-                      <div className="flex justify-center gap-2">
-                        {(typeof rowActions === "function"
-                          ? rowActions(item)
-                          : rowActions
-                        ).map((action) => (
-                          <button
-                            key={action.key}
-                            onClick={() => onActionClick(action.key, item)}
-                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                              action.variant === "success"
-                                ? "bg-purple-500 text-white hover:bg-purple-600"
-                                : action.variant === "edit"
-                                ? "bg-gray-50 text-black hover:text-white hover:bg-purple-600 text-lg w-20"
-                                : action.variant === "primary"
-                                ? "bg-purple-600 text-white hover:bg-purple-700"
-                                : action.danger
-                                ? "bg-red-50 text-red-600 hover:bg-red-100"
-                                : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                            }`}
-                          >
-                            {action.label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                      ) : (
+                        /* BUTTONS VARIANT */
+                        actionsVariant === "buttons" &&
+                        Array.isArray(rowActions) &&
+                        rowActions.length > 0 && (
+                          <div className="flex gap-2">
+                            {rowActions.map((action) => (
+                              <button
+                                key={action.key}
+                                type="button"
+                                onClick={() => onActionClick(action.key, item)}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                                  action.variant === "success"
+                                    ? "bg-purple-500 text-white hover:bg-purple-600"
+                                    : action.variant === "edit"
+                                      ? "bg-gray-50 text-black hover:text-white hover:bg-purple-600"
+                                      : action.variant === "primary"
+                                        ? "bg-purple-600 text-white hover:bg-purple-700"
+                                        : action.danger
+                                          ? "bg-red-50 text-red-600 hover:bg-red-100"
+                                          : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                                }`}
+                              >
+                                {action.label}
+                              </button>
+                            ))}
+                          </div>
+                        )
+                      )}
+                    </div>
                   </td>
                 )}
               </tr>
@@ -239,28 +275,66 @@ export default function GenericTable({
             ))}
           </div>
         )}
-        {/* Pagination */}
-        {pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-            <p className="text-sm text-gray-800">
-              Page {pagination.currentPage} of {pagination.totalPages}
+        {/* Pagination - Exact Figma Design */}
+        {pagination && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-white">
+            {/* Left Side: Records Summary */}
+            <p className="text-sm font-medium text-gray-500">
+              Showing {(pagination.currentPage - 1) * pagination.limit + 1}-
+              {Math.min(
+                pagination.currentPage * pagination.limit,
+                pagination.totalItems,
+              )}{" "}
+              from {pagination.totalItems}
             </p>
 
-            <div className="flex gap-2">
+            {/* Right Side: Circular Numbered Buttons */}
+            <div className="flex items-center gap-2">
+              {/* Previous Button */}
               <button
                 disabled={pagination.currentPage === 1}
                 onClick={() => onPageChange(pagination.currentPage - 1)}
-                className="px-3 py-1.5 text-sm border text-gray-800 disabled:border-gray-400 rounded-lg disabled:opacity-50"
+                className="p-2 rounded-lg border border-gray-100 text-blue-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
               >
-                Previous
+                <ChevronLeft size={18} />
               </button>
 
+              {/* Page Numbers */}
+              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  // Logic to show current, first, last, and neighbors (simple version)
+                  return (
+                    page === 1 ||
+                    page === pagination.totalPages ||
+                    Math.abs(page - pagination.currentPage) <= 1
+                  );
+                })
+                .map((page, index, array) => (
+                  <React.Fragment key={page}>
+                    {/* Show ellipsis if there is a gap */}
+                    {index > 0 && page - array[index - 1] > 1 && (
+                      <span className="px-2 text-gray-400">...</span>
+                    )}
+                    <button
+                      onClick={() => onPageChange(page)}
+                      className={`w-9 h-9 flex items-center bg-blue-50 justify-center rounded-lg text-sm font-bold transition-all ${
+                        pagination.currentPage === page
+                          ? "bg-blue-600 text-white shadow-md shadow-blue-100"
+                          : "text-blue-700 hover:bg-blue-100"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </React.Fragment>
+                ))}
+
+              {/* Next Button */}
               <button
                 disabled={pagination.currentPage === pagination.totalPages}
                 onClick={() => onPageChange(pagination.currentPage + 1)}
-                className="px-3 py-1.5 text-sm border text-gray-800 rounded-lg disabled:opacity-50"
+                className="p-2 rounded-lg border border-gray-100 text-blue-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
               >
-                Next
+                <ChevronRight size={18} />
               </button>
             </div>
           </div>

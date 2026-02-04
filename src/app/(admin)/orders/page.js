@@ -16,6 +16,8 @@ import ApproveRefundModal from "@/components/orderModals/ApproveFundModal";
 
 // 🔹 Hooks
 import useOrderList from "@/hooks/useOrderList";
+import StatusCapsule from "@/components/ui/StatusCapsule";
+import { handleExport } from "@/lib/services/exportService";
 
 // ============================================================================
 // CONFIG
@@ -34,7 +36,12 @@ const allOrdersColumns = [
   { header: "Order ID", key: "orderId", sortable: true },
   { header: "Buyer", key: "customer" },
   { header: "Total Amount", key: "amount", sortable: true },
-  { header: "Status", key: "status" },
+  {
+    header: "Status",
+    key: "status",
+    sortable: true,
+    render: (_, row) => <StatusCapsule value={row.status} />,
+  },
   { header: "Order Date", key: "date", sortable: true },
 ];
 
@@ -61,9 +68,18 @@ export default function OrderManagementPage() {
       page: currentPage,
       limit: 20,
     },
-    refreshKey
+    refreshKey,
   );
-
+  const onExportData = async (exportOptions) => {
+    await handleExport({
+      entityType: "orders",
+      data: orders,
+      format: exportOptions.format,
+      fields: exportOptions.fields,
+      selections: exportOptions.selections,
+      filename: `orders_${new Date().toISOString().split("T")[0]}`,
+    });
+  };
   // 🔹 Map DB Data to UI Table Format
   const tableData = orders.map((o) => ({
     ...o,
@@ -75,7 +91,7 @@ export default function OrderManagementPage() {
     status: o.status.charAt(0).toUpperCase() + o.status.slice(1),
     date: new Date(o.created_at).toLocaleDateString(),
   }));
-
+  console.log("Orders:", tableData);
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -137,9 +153,9 @@ export default function OrderManagementPage() {
         data={tableData}
         loading={loading}
         showSearch
-        onSearch={(val) => {
+        onSearchChange={(val) => {
           setSearchTerm(val);
-          setCurrentPage(1);
+          setCurrentPage(1); // Reset to page 1 on search
         }}
         rowActions={[
           { key: "view", label: "View Details" },
@@ -167,7 +183,7 @@ export default function OrderManagementPage() {
           console.log(
             "Confirming delivery for:",
             selectedOrder?.order_code,
-            notes
+            notes,
           );
           // Here you would call an API like updateOrderStatus(selectedOrder.id, 'delivered')
           setRefreshKey((k) => k + 1); // Trigger re-fetch
@@ -184,7 +200,7 @@ export default function OrderManagementPage() {
           console.log(
             "Approving Refund for:",
             selectedOrder?.order_code,
-            refundData
+            refundData,
           );
           setRefreshKey((k) => k + 1); // Trigger re-fetch
           setRefundOpen(false);
@@ -197,6 +213,7 @@ export default function OrderManagementPage() {
         title="Export Orders"
         variant="orders"
         config={exportConfigs["orders"]}
+        onExport={onExportData}
       />
     </main>
   );

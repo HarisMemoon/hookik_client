@@ -3,18 +3,6 @@ import { useEffect, useState } from "react";
 import { fetchUserList } from "@/lib/api/users";
 import { useRouter } from "next/navigation";
 
-/**
- * Backend-driven user list hook with role-based filtering
- *
- * @param {Object} query - Query parameters including role filter
- * @param {string} query.role - User role to filter by ('shopper', 'influencer', 'seller')
- * @param {number} query.page - Current page number
- * @param {number} query.limit - Items per page
- * @param {string} query.search - Search query
- * @param {string} query.date_from - Start date filter
- * @param {string} query.date_to - End date filter
- * @param {number} refreshKey - Key to force refresh
- */
 export default function useUserList(query = {}, refreshKey = 0) {
   const router = useRouter();
 
@@ -25,7 +13,7 @@ export default function useUserList(query = {}, refreshKey = 0) {
     currentPage: 1,
     limit: 20,
   });
-
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -35,14 +23,30 @@ export default function useUserList(query = {}, refreshKey = 0) {
       setError(null);
 
       try {
-        // Build query params with role filter
+        // Build query params with role filter AND filter parameter
         const queryParams = {
           page: query.page || 1,
           limit: query.limit || 20,
           ...(query.search && { search: query.search }),
           ...(query.date_from && { date_from: query.date_from }),
           ...(query.date_to && { date_to: query.date_to }),
-          ...(query.role && { role: query.role }), // Include role filter
+          ...(query.role && { role: query.role }),
+          ...(query.filter && { filter: query.filter }), // ✅ Fixed: Include filter parameter
+          ...(query.status && { status: query.status }),
+          ...(query.minSpent && { minSpent: query.minSpent }),
+          ...(query.maxSpent && { maxSpent: query.maxSpent }),
+          ...(query.minOrders && { minOrders: query.minOrders }),
+          ...(query.maxOrders && { maxOrders: query.maxOrders }),
+          ...(query.minSales && { minSales: query.minSales }),
+          ...(query.maxSales && { maxSales: query.maxSales }),
+          ...(query.minBalance && { minBalance: query.minBalance }),
+          ...(query.maxBalance && { maxBalance: query.maxBalance }),
+          ...(query.minProducts && { minProducts: query.minProducts }),
+          ...(query.maxProducts && { maxProducts: query.maxProducts }),
+          ...(query.storefrontStatus && {
+            storefrontStatus: query.storefrontStatus,
+          }),
+          ...(query.verifiedStatus && { verifiedStatus: query.verifiedStatus }),
         };
 
         console.log("Fetching users with query params:", queryParams);
@@ -51,15 +55,17 @@ export default function useUserList(query = {}, refreshKey = 0) {
 
         console.log("Received users:", response.users?.length || 0, "users");
         console.log("Role filter applied:", queryParams.role);
+        console.log("Filter applied:", queryParams.filter); // ✅ Add this log
 
         setUsers(response.users || []);
+        setStats(response.stats || null);
         setPagination(
           response.pagination || {
             totalItems: 0,
             totalPages: 1,
             currentPage: query.page || 1,
             limit: query.limit || 20,
-          }
+          },
         );
       } catch (err) {
         console.error("User List Fetch Error:", err.message);
@@ -82,6 +88,7 @@ export default function useUserList(query = {}, refreshKey = 0) {
   return {
     users,
     pagination,
+    stats,
     loading,
     error,
   };

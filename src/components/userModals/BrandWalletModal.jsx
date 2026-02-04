@@ -5,6 +5,7 @@ import { PRIMARY } from "@/constants/COLORS";
 
 export default function BrandWalletModal({ open, onClose, brand }) {
   if (!open || !brand) return null;
+  console.log("brand", brand);
 
   const footer = (
     <div className="flex justify-end gap-3 w-full">
@@ -28,7 +29,7 @@ export default function BrandWalletModal({ open, onClose, brand }) {
       open={open}
       onClose={onClose}
       title="Brand Wallet"
-      subtitle={`Wallet details for ${brand.name || "FashionHub"}`}
+      subtitle={`Wallet details for ${brand.business_name || "FashionHub"}`}
       size="md"
       footer={footer}
     >
@@ -41,7 +42,11 @@ export default function BrandWalletModal({ open, onClose, brand }) {
           <p className="text-xs opacity-80 mb-2 font-medium">
             Available Balance
           </p>
-          <h2 className="text-3xl font-bold mb-4">₦450,000</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            {brand.wallet_balance
+              ? `$ ${brand.wallet_balance}`
+              : "No Wallet Yet"}
+          </h2>
           <p className="text-[10px] opacity-60 font-bold  tracking-widest">
             Last updated: Nov 1, 2024
           </p>
@@ -50,9 +55,12 @@ export default function BrandWalletModal({ open, onClose, brand }) {
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Total Earned", val: "₦2,450,000" },
-            { label: "Pending", val: "₦125,000" },
-            { label: "Withdrawn", val: "₦1,875,000" },
+            {
+              label: "Total Earned",
+              val: `$ ${brand.brand_wallet.total_earned}`,
+            },
+            { label: "Pending", val: `$ ${brand.brand_wallet.pending}` },
+            { label: "Withdrawn", val: `$ ${brand.brand_wallet.withdrawn}` },
           ].map((stat, i) => (
             <div
               key={i}
@@ -69,9 +77,10 @@ export default function BrandWalletModal({ open, onClose, brand }) {
           <h4 className="text-sm font-bold text-gray-900 mb-3">
             Recent Transactions
           </h4>
+
           <div className="border border-gray-100 rounded-2xl overflow-hidden">
             <table className="w-full text-left text-xs">
-              <thead className=" border-b border-gray-100 text-gray-800">
+              <thead className="border-b border-gray-100 text-gray-800">
                 <tr>
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium">Type</th>
@@ -79,39 +88,66 @@ export default function BrandWalletModal({ open, onClose, brand }) {
                   <th className="px-4 py-3 font-medium text-right">Status</th>
                 </tr>
               </thead>
+
               <tbody className="divide-y divide-gray-100">
-                <tr>
-                  <td className="px-4 py-4 text-gray-900 font-medium">
-                    2024-10-28
-                  </td>
-                  <td className="px-4 py-4 text-gray-500 font-medium">
-                    Campaign Payment
-                  </td>
-                  <td className="px-4 py-4 font-bold text-green-600">
-                    +₦125,000
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span className="px-2.5 py-1 bg-green-500 text-white rounded-md text-[9px] font-bold uppercase">
-                      Completed
-                    </span>
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-4 py-4 text-gray-900 font-medium">
-                    2024-10-25
-                  </td>
-                  <td className="px-4 py-4 text-gray-500 font-medium">
-                    Withdrawal
-                  </td>
-                  <td className="px-4 py-4 font-bold text-red-500">
-                    -₦200,000
-                  </td>
-                  <td className="px-4 py-4 text-right">
-                    <span className="px-2.5 py-1 bg-green-500 text-white rounded-md text-[9px] font-bold uppercase">
-                      Completed
-                    </span>
-                  </td>
-                </tr>
+                {brand.recentTransactions?.length ? (
+                  brand.recentTransactions.map((tx) => {
+                    const isCredit = [
+                      "earning_vendor",
+                      "earning_influencer",
+                      "credit",
+                    ].includes(tx.type);
+
+                    return (
+                      <tr key={tx.id}>
+                        {/* DATE */}
+                        <td className="px-4 py-4 text-gray-900 font-medium">
+                          {new Date(tx.created_at).toLocaleDateString()}
+                        </td>
+
+                        {/* TYPE */}
+                        <td className="px-4 py-4 text-gray-500 font-medium capitalize">
+                          {tx.type.replace(/_/g, " ")}
+                        </td>
+
+                        {/* AMOUNT */}
+                        <td
+                          className={`px-4 py-4 font-bold ${
+                            isCredit ? "text-green-600" : "text-red-500"
+                          }`}
+                        >
+                          {isCredit ? "+" : "-"}₦
+                          {Number(tx.amount).toLocaleString()}
+                        </td>
+
+                        {/* STATUS */}
+                        <td className="px-4 py-4 text-right">
+                          <span
+                            className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase text-white
+                      ${
+                        tx.status === "completed"
+                          ? "bg-green-500"
+                          : tx.status === "pending"
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                      }`}
+                          >
+                            {tx.status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="px-4 py-6 text-center text-gray-400 text-xs"
+                    >
+                      No recent transactions
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

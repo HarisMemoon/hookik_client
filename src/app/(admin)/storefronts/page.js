@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Download } from "lucide-react";
+import { Building2, Download } from "lucide-react";
 import PillFilterGroup from "@/components/PillFilterGroup";
 import GenericTable from "@/components/GenericTable";
 import ExportModal from "@/components/ExportModal";
@@ -12,6 +12,9 @@ import UserStatusModal from "@/components/userModals/UserStatusModal";
 import useStorefrontList from "@/hooks/useStorefrontList";
 import StorefrontDetailsModal from "@/components/storefrontModals/StorefrontDetailsModal";
 import EditStorefrontModal from "@/components/storefrontModals/EditStorefrontModal";
+import StatusCapsule from "@/components/ui/StatusCapsule";
+import { updateStorefront } from "@/lib/api/storefronts";
+import { handleExport } from "@/lib/services/exportService";
 
 // ============================================================================
 // CONFIG
@@ -32,11 +35,35 @@ const storefrontFilters = [
 
 // -------- All Storefronts --------
 const allStorefrontColumns = [
-  { header: "Creator Name", key: "name", sortable: true },
-  { header: "Total Products", key: "products", sortable: true },
-  { header: "Conversion Rate", key: "conversionRate" },
-  { header: "Traffic", key: "traffic" },
-  { header: "Status", key: "status" },
+  { header: "Creator Name", key: "creatorName", sortable: true },
+  {
+    header: "Storefront Name",
+    key: "name",
+    sortable: true,
+    render: (_, row) => (
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center">
+          <Building2 size={18} className="text-purple-600" />
+        </div>
+
+        <span className="font-medium text-gray-600 align-center">
+          {row.name ? row.name : "Not Available"}
+        </span>
+      </div>
+    ),
+  },
+  {
+    header: "Total Products",
+    key: "products",
+    sortable: true,
+    render: (_, row) => row.owner.total_products || 0,
+  },
+  {
+    header: "Status",
+    key: "status",
+    sortable: true,
+    render: (_, row) => <StatusCapsule value={row.status} />,
+  },
 ];
 
 const allStorefrontData = Array.from({ length: 6 }).map((_, i) => ({
@@ -111,6 +138,7 @@ const storefrontFilterFields = [
     type: "dropdown",
     key: "status",
     options: [
+      { label: "All", value: "all" },
       { label: "Active", value: "active" },
       { label: "Disabled", value: "disabled" },
       { label: "Pending", value: "pending" },
@@ -123,28 +151,27 @@ const storefrontFilterFields = [
     type: "range",
     minKey: "minProducts",
     maxKey: "maxProducts",
-    disabled: true,
   },
 
   // 🔒 Conversion Rate (disabled)
-  {
-    label: "Conversion Rate (%)",
-    type: "range",
-    minKey: "minConversion",
-    maxKey: "maxConversion",
-    disabled: true,
-  },
+  // {
+  //   label: "Conversion Rate (%)",
+  //   type: "range",
+  //   minKey: "minConversion",
+  //   maxKey: "maxConversion",
+  //   disabled: true,
+  // },
 
-  {
-    label: "Category",
-    type: "dropdown",
-    key: "category",
-    options: [
-      { label: "Fashion", value: "fashion" },
-      { label: "Electronics", value: "electronics" },
-      { label: "Lifestyle", value: "lifestyle" },
-    ],
-  },
+  // {
+  //   label: "Category",
+  //   type: "dropdown",
+  //   key: "category",
+  //   options: [
+  //     { label: "Fashion", value: "fashion" },
+  //     { label: "Electronics", value: "electronics" },
+  //     { label: "Lifestyle", value: "lifestyle" },
+  //   ],
+  // },
 ];
 
 // ============================================================================
@@ -174,12 +201,25 @@ export default function StorefrontManagementPage() {
       search: searchTerm,
       status: filters.status,
       page, // Add pagination state as needed
+      minProducts: filters.minProducts, // ⚡ Ensure this matches the controller destructuring
+      maxProducts: filters.maxProducts,
     },
-    refreshKey
+    refreshKey,
   );
   useEffect(() => {
     setPage(1);
   }, [currentFilter, searchTerm, filters]);
+  const onExportData = async (exportOptions) => {
+    await handleExport({
+      entityType: "storefront",
+      data: storefronts,
+      format: exportOptions.format,
+      fields: exportOptions.fields,
+      selections: exportOptions.selections,
+      filename: `storefronts_${new Date().toISOString().split("T")[0]}`,
+    });
+  };
+
   const { title, columns, data } = tableMap[currentFilter];
   const [exportOpen, setExportOpen] = useState(false);
   const tableData = storefronts.map((sf) => ({
@@ -191,6 +231,7 @@ export default function StorefrontManagementPage() {
     status: sf.is_public ? "Active" : "Disabled",
     products: 0, // You might need a count association for this
   }));
+  console.log("store", tableData);
 
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedStorefront, setSelectedStorefront] = useState(null);
@@ -257,6 +298,24 @@ export default function StorefrontManagementPage() {
       console.error("Failed to update status:", error);
     }
   };
+  const handleSaveStorefront = async (formData) => {
+    if (!selectedStorefront?.id) return;
+
+    try {
+      await updateStorefront(selectedStorefront.id, {
+        name: formData.name,
+        description: formData.description,
+        is_public: formData.is_public,
+      });
+
+      setEditOpen(false);
+      setSelectedStorefront(null);
+      setRefreshKey((prev) => prev + 1);
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
   const rowActions = rowActionsByFilter[currentFilter] || [];
   const actionsVariant = actionsVariantByFilter[currentFilter] || "dropdown";
 
@@ -290,6 +349,10 @@ export default function StorefrontManagementPage() {
         columns={columns}
         data={tableData}
         showSearch={currentFilter === "all"}
+        onSearchChange={(val) => {
+          setSearchTerm(val);
+          setPage(1); // Reset to page 1 on search
+        }}
         showFilter={currentFilter === "all"}
         onFilterClick={() => setShowFilterModal(true)}
         rowActions={rowActions}
@@ -307,6 +370,7 @@ export default function StorefrontManagementPage() {
         title="Filter Storefronts"
         onApply={() => {
           console.log("Applying storefront filters:", filters);
+          setPage(1);
           setShowFilterModal(false);
         }}
       />
@@ -317,6 +381,7 @@ export default function StorefrontManagementPage() {
         title="Export Storefronts"
         variant="storefronts"
         config={exportConfigs["storefront"]}
+        onExport={onExportData}
       />
       {/* Status Modal for Disabling Storefronts */}
       <UserStatusModal
@@ -336,11 +401,7 @@ export default function StorefrontManagementPage() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         storefront={selectedStorefront}
-        onSave={(data) => {
-          console.log("Saving storefront changes:", data);
-          setRefreshKey((prev) => prev + 1);
-          setEditOpen(false);
-        }}
+        onSave={handleSaveStorefront}
       />
     </main>
   );

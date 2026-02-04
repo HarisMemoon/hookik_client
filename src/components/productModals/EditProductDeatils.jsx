@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
 import Dropdown from "@/components/ui/DropDown";
+import useCategoryList from "@/hooks/useCategoryList";
 
 export default function EditProductModal({
   open,
@@ -10,28 +11,57 @@ export default function EditProductModal({
   onSave,
   isViewOnly = false, // New prop to toggle modes
 }) {
+  const { categories, loading } = useCategoryList({ limit: 100 });
   const [formData, setFormData] = useState({
     name: "",
-    category: "",
+    category_id: "",
     price: "",
     description: "",
     stock: "",
     sku: "",
+    status: "",
   });
+  useEffect(() => {
+    console.log("=== PRODUCT PROP CHANGED ===");
+    console.log("Product received:", product);
 
+    if (product) {
+      const newFormData = {
+        id: product.id,
+        name: product.name || "",
+        category_id: product.category_id || product.category?.id || "",
+        price: product.price || "",
+        description: product.description || "",
+        stock: product.stock || product.inventory || "",
+        sku: product.sku || "N/A",
+        status: product.status || "",
+      };
+
+      console.log("Setting formData to:", newFormData);
+      setFormData(newFormData);
+    }
+  }, [product]);
   // Sync state when a product is selected
   useEffect(() => {
     if (product) {
       setFormData({
+        id: product.id,
         name: product.name || "",
-        category: product.category || "Electronics",
+        // Use category_id for the value, fallback to the object's id
+        category_id: product.category_id || product.category?.id || "",
         price: product.price || "",
         description: product.description || "",
-        stock: product.stock || product.inventory || "", // Map inventory if needed
+        stock: product.stock || product.inventory || "",
         sku: product.sku || "N/A",
+        status: product.status || "",
       });
     }
   }, [product]);
+  // 3. Format categories for the Dropdown component
+  const categoryOptions = categories.map((cat) => ({
+    label: cat.name,
+    value: cat.id, // Dropdown will handle numeric IDs as values
+  }));
 
   const footer = (
     <div className="flex justify-end gap-3 w-full">
@@ -44,10 +74,16 @@ export default function EditProductModal({
 
       {!isViewOnly && (
         <button
-          onClick={() => onSave(formData)}
+          onClick={() => {
+            console.log("=== MODAL SAVE CLICKED ===");
+            console.log("formData:", formData); // ✅ Add this
+            console.log("formData keys:", Object.keys(formData)); // ✅ Add this
+            onSave(formData);
+          }}
           className="px-6 py-2 text-sm font-medium bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition shadow-md shadow-purple-100"
+          disabled={loading}
         >
-          Save Changes
+          {loading ? "Loading..." : "Save Changes"}
         </button>
       )}
     </div>
@@ -89,23 +125,26 @@ export default function EditProductModal({
         </div>
 
         {/* Category and Price Grid */}
+        {/* Category and Price Grid */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               Category
             </label>
             {isViewOnly ? (
-              <div className={inputStyles}>{formData.category}</div>
+              <div className={inputStyles}>
+                {/* Find name by ID for view-only mode */}
+                {categories.find((c) => c.id === formData.category_id)?.name ||
+                  "N/A"}
+              </div>
             ) : (
               <Dropdown
-                options={[
-                  { label: "Electronics", value: "Electronics" },
-                  { label: "Fashion", value: "Fashion" },
-                  { label: "Lifestyle", value: "Lifestyle" },
-                  { label: "Beauty", value: "Beauty" },
-                ]}
-                value={formData.category}
-                onChange={(val) => setFormData({ ...formData, category: val })}
+                options={categoryOptions}
+                value={formData.category_id}
+                onChange={(val) =>
+                  setFormData({ ...formData, category_id: val })
+                }
+                loading={loading}
               />
             )}
           </div>
@@ -114,7 +153,7 @@ export default function EditProductModal({
               Price
             </label>
             <input
-              type="text" // Use text for viewing currency symbols if needed
+              type="text"
               readOnly={isViewOnly}
               value={formData.price}
               onChange={(e) =>

@@ -65,7 +65,6 @@ export default function GenericFilterModal({
             <button
               onClick={() => {
                 onApply();
-                onClose();
               }}
               className="px-6 py-2 text-sm font-medium bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition shadow-md shadow-purple-200"
             >

@@ -1,3 +1,4 @@
+// src/components/ExportModal.jsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -10,16 +11,23 @@ export default function ExportModal({
   onClose,
   onExport,
   title = "Export Data",
-  config = {}, // Expects { checkboxes: {}, selects: [], selectDefaults: {} }
+  config = {},
 }) {
   const [exportFormat, setExportFormat] = useState("csv");
   const [checkboxes, setCheckboxes] = useState({});
   const [selectValues, setSelectValues] = useState({});
 
-  // 🔹 CRITICAL: Sync state whenever the config changes (e.g., switching tabs)
+  // ✅ Sync state whenever the config changes
   useEffect(() => {
-    if (config.checkboxes) setCheckboxes(config.checkboxes);
-    if (config.selectDefaults) setSelectValues(config.selectDefaults);
+    if (config.checkboxes) {
+      setCheckboxes(config.checkboxes);
+    } else {
+      setCheckboxes({}); // ✅ Explicitly set to empty if no checkboxes
+    }
+
+    if (config.selectDefaults) {
+      setSelectValues(config.selectDefaults);
+    }
   }, [config]);
 
   const handleCheckboxToggle = (key) => {
@@ -30,13 +38,20 @@ export default function ExportModal({
   };
 
   const handleExport = () => {
+    console.log("=== EXPORT MODAL DEBUG ===");
+    console.log("Checkboxes:", checkboxes);
+    console.log("Select Values:", selectValues);
+
     onExport({
       format: exportFormat,
       selections: selectValues,
-      fields: checkboxes,
+      fields: checkboxes, // This will be empty {} for dropdown-only configs
     });
     onClose();
   };
+
+  // ✅ Check if we have any checkboxes
+  const hasCheckboxes = Object.keys(checkboxes).length > 0;
 
   return (
     <Modal
@@ -64,24 +79,41 @@ export default function ExportModal({
       }
     >
       <div className="space-y-6">
-        {/* 1. Format Selection (Generic for all) */}
+        {/* 1. Format Selection */}
         <div>
-          <label className="mb-2 block text-md font-semibold text-gray-900  tracking-wider text-[11px]">
+          <label className="mb-2 block text-md font-semibold text-gray-900 tracking-wider text-[11px]">
             Export Format
           </label>
           <Dropdown
             options={[
-              { label: "CSV ", value: "csv" },
-              { label: "Excel ", value: "xlsx" },
-              { label: "PDF ", value: "pdf" },
+              { label: "CSV", value: "csv" },
+              { label: "Excel", value: "xlsx" },
+              { label: "PDF", value: "pdf" },
             ]}
             value={exportFormat}
             onChange={setExportFormat}
           />
         </div>
 
-        {/* 3. Dynamic Checkboxes (Varies by Creator/Brand/Buyer) */}
-        {Object.keys(checkboxes).length > 0 && (
+        {/* 2. Dynamic Dropdowns - Show BEFORE checkboxes */}
+        {config.selects?.map((select) => (
+          <div key={select.key}>
+            <label className="mb-2 block text-sm font-semibold text-gray-900 uppercase tracking-wider text-[11px]">
+              {select.label}
+            </label>
+            <Dropdown
+              options={select.options}
+              value={selectValues[select.key] || ""}
+              onChange={(val) => {
+                console.log(`Dropdown ${select.key} changed to:`, val);
+                setSelectValues((p) => ({ ...p, [select.key]: val }));
+              }}
+            />
+          </div>
+        ))}
+
+        {/* 3. Dynamic Checkboxes - Only show if they exist */}
+        {hasCheckboxes && (
           <div>
             <label className="block text-sm font-semibold text-gray-900 uppercase tracking-wider text-[11px] mb-4">
               Select Fields to Include
@@ -109,21 +141,6 @@ export default function ExportModal({
             </div>
           </div>
         )}
-        {/* 2. Dynamic Dropdowns (Varies by Creator/Brand/Buyer) */}
-        {config.selects?.map((select) => (
-          <div key={select.key}>
-            <label className="mb-2 block text-sm font-semibold text-gray-900 uppercase tracking-wider text-[11px]">
-              {select.label}
-            </label>
-            <Dropdown
-              options={select.options}
-              value={selectValues[select.key] || ""}
-              onChange={(val) =>
-                setSelectValues((p) => ({ ...p, [select.key]: val }))
-              }
-            />
-          </div>
-        ))}
       </div>
     </Modal>
   );

@@ -1,8 +1,10 @@
 import React from "react";
 import Modal from "@/components/ui/Modal";
+import StatusCapsule from "../ui/StatusCapsule";
 
 export default function CreatorProfileModal({ open, onClose, creator }) {
   if (!open || !creator) return null;
+  console.log("creator:", creator);
 
   const performanceMetrics = [
     { label: "Conversion Rate", value: "8.5%", progress: 85 },
@@ -68,11 +70,13 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Followers</p>
-              <p className="text-sm font-bold text-gray-900">125K</p>
+              <p className="text-sm font-bold text-gray-900">0</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Total Sales</p>
-              <p className="text-sm font-bold text-gray-900">₦2,450,000</p>
+              <p className="text-sm font-bold text-gray-900">
+                {creator.total_sales}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Referral Bonus</p>
@@ -80,22 +84,16 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
             </div>
             <div>
               <p className="text-xs text-gray-400 mb-0.5">Storefront Status</p>
-              <span className="px-2.5 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded-md uppercase">
-                Active
-              </span>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">
-                Verification Status
-              </p>
-              <span className="px-2.5 py-1 bg-black text-white text-[10px] font-bold rounded-md uppercase">
-                Verified
-              </span>
+              {creator.storefront == "No Store" ? (
+                <StatusCapsule value="disabled" />
+              ) : (
+                <StatusCapsule value="active" />
+              )}
             </div>
           </div>
 
           {/* Performance Metrics */}
-          <div>
+          {/* <div>
             <h4 className="text-sm font-bold text-gray-900 mb-4">
               Performance Metrics
             </h4>
@@ -119,10 +117,10 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Recent Campaigns */}
-          <div>
+          {/* <div>
             <h4 className="text-sm font-bold text-gray-900 mb-3">
               Recent Campaigns
             </h4>
@@ -166,10 +164,10 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
                 </tbody>
               </table>
             </div>
-          </div>
+          </div> */}
 
           {/* AI Recommendations */}
-          <div>
+          {/* <div>
             <h4 className="text-sm font-bold text-gray-900 mb-3">
               AI-Recommended Brand Collaborations
             </h4>
@@ -193,15 +191,15 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Referral Balance */}
-          <div className="pt-4 border-t border-gray-50">
+          {/* <div className="pt-4 border-t border-gray-50">
             <p className="text-xs text-gray-400 mb-0.5">
               Referral Wallet Balance
             </p>
             <p className="text-lg font-bold text-gray-900">₦125,000</p>
-          </div>
+          </div> */}
         </div>
       </div>
     </Modal>

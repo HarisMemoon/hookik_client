@@ -46,7 +46,7 @@ export default function Dropdown({
       {/* Dropdown Menu */}
       {isOpen && (
         <div className="absolute left-0 z-[110] mt-2 w-full min-w-[160px] origin-top transform rounded-2xl border border-gray-100 bg-white p-1.5 shadow-xl transition-all">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 max-h-60 overflow-y-auto custom-purple-scroll">
             {options.map((option) => (
               <button
                 key={option.value}

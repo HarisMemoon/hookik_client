@@ -89,7 +89,7 @@ export default function ManageStorefrontModal({ open, onClose, user }) {
           />
         </div>
 
-        <div>
+        {/* <div>
           <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">
             Product Categories
           </label>
@@ -111,7 +111,7 @@ export default function ManageStorefrontModal({ open, onClose, user }) {
               </label>
             ))}
           </div>
-        </div>
+        </div> */}
 
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase">

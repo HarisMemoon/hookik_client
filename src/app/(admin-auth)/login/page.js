@@ -8,8 +8,8 @@ import { PRIMARY } from "@/constants/COLORS.js";
 import { Eye } from "lucide-react";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("admin@hookik.com");
+  const [password, setPassword] = useState("12345678");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -200,12 +200,11 @@ export default function LoginPage() {
               </button>
             </div>
             <div className="border-gray-900 w-80" />
-            <p className="mt-6 text-center text-sm text-gray-400">OR</p>
             <p className="text-center text-sm text-gray-600">
               Don't have an account?
               <a
-                href="#"
-                className=" text-purple-600 hover:text-purple-500 ml-1"
+                href="/registration"
+                className="text-purple-600 hover:text-purple-500 ml-1"
               >
                 Sign up
               </a>

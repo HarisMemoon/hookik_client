@@ -3,12 +3,14 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Users,
+  Target,
   Tag,
   DollarSign,
   Building2,
   Store,
   Download,
+  TrendingUp,
+  Box,
 } from "lucide-react";
 
 import PillFilterGroup from "@/components/PillFilterGroup";
@@ -27,25 +29,44 @@ import CreatorDetailsModal from "@/components/userModals/CreatorDetailsModal";
 import BrandDetailsModal from "@/components/userModals/BrandDetailsModal";
 import BrandWalletModal from "@/components/userModals/BrandWalletModal";
 import { exportConfigs } from "@/config/exportConfigs";
-
+import StatusCapsule from "@/components/ui/StatusCapsule";
+import { handleExport } from "@/lib/services/exportService";
+import useDashboardStats from "@/hooks/useStats";
+import DashboardLoader from "@/components/ui/DashboardLoader";
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
 
 const DEFAULT_TAB = "buyers";
-
+const iconMap = {
+  TrendingUp: TrendingUp,
+  Store: Store,
+  Target: Target,
+  Building2: Building2,
+  Box: Box,
+  DollarSign: DollarSign,
+};
 const ROLE_MAP = {
-  buyers: "shopper",
+  buyers: "customer",
   creators: "influencer",
   brands: "seller",
 };
 
+const STAT_STYLES = {
+  // Creators Tab
+  "Total Creators": { bg: "rgb(243, 232, 255)", text: "text-purple-700" },
+  "With Storefronts": { bg: "rgb(235, 253, 245)", text: "text-green-700" },
+  "Total Sales": { bg: "rgb(235, 247, 250)", text: "text-blue-700" },
+
+  // Brands Tab
+  "Total No of Brands": { bg: "rgb(243, 232, 255)", text: "text-purple-700" },
+  "Total Products": { bg: "rgb(235, 247, 250)", text: "text-blue-700" },
+  "Total Wallet Balance": { bg: "rgb(255, 249, 229)", text: "text-yellow-700" },
+};
 // Sub-filters
 const userFilters = [
   { value: "all", label: "All Users" },
   { value: "suspended", label: "Suspended" },
-  { value: "flagged", label: "Flagged Users" },
-  { value: "activity", label: "Activity Logs" },
 ];
 
 const creatorFilters = [
@@ -329,14 +350,6 @@ const generateDummyCreatorsData = (filter) => {
         visits: 1250,
         conversionRate: "3.2%",
       },
-      {
-        id: 2,
-        creator: "Mark Creator",
-        storefront: "mark-shop",
-        products: 32,
-        visits: 890,
-        conversionRate: "2.8%",
-      },
     ];
   }
 
@@ -435,12 +448,13 @@ const getBuyersColumns = (filter) => {
     },
     { header: "Email", key: "email", sortable: true },
     { header: "Phone", key: "phone_number" },
-    { header: "Total Orders", key: "orders", sortable: true },
-    { header: "Total Spent", key: "spent", sortable: true },
+    { header: "Total Orders", key: "total_orders", sortable: true },
+    { header: "Total Spent", key: "total_spent", sortable: true },
     {
       header: "Status",
-      key: "role",
-      badge: (row) => (row.is_active === false ? "Suspended" : "Active"),
+      key: "status",
+      sortable: true,
+      render: (_, row) => <StatusCapsule value={row.status} />,
     },
   ];
 };
@@ -481,40 +495,93 @@ const getBrandsColumns = (filter) => {
 
   return [
     {
-      header: "Brand",
+      header: "Name",
       key: "name",
+      sortable: true,
+      render: (_, row) => (
+        <span className="font-medium text-gray-900">
+          {row.first_name ? `${row.first_name} ${row.last_name}` : row.name}
+        </span>
+      ),
+    },
+    {
+      header: "Storefront Name",
+      key: "business_name",
       sortable: true,
       render: (_, row) => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center">
-            <Store size={18} className="text-purple-600" />
+            <Building2 size={18} className="text-purple-600" />
           </div>
-          <span className="font-medium text-gray-900">
-            {row.first_name ? `${row.first_name} ${row.last_name}` : row.name}
+          <span className="font-medium text-gray-600 align-center">
+            {row.business_name ? `${row.business_name} ` : "No Store"}
           </span>
         </div>
       ),
     },
-    { header: "Total Products", key: "products", sortable: true },
-    { header: "Active Campaigns", key: "campaigns", sortable: true },
-    { header: "Wallet Balance", key: "balance", sortable: true },
+    { header: "Total Products", key: "total_products", sortable: true },
+    {
+      header: "Wallet Balance",
+      key: "wallet_balance",
+      sortable: true,
+      render: (_, row) => (
+        <span className="font-medium text-gray-600 align-center">
+          {row.wallet_balance ? `${row.wallet_balance} ` : "No Wallet"}
+        </span>
+      ),
+    },
+
     {
       header: "Status",
-      key: "role",
-      badge: (row) => (row.is_active === false ? "Suspended" : "Active"),
+      key: "status",
+      sortable: true,
+      render: (_, row) => <StatusCapsule value={row.status} />,
     },
   ];
 };
 
 const getCreatorsColumns = (filter) => {
+  const renderCreatorName = (_, row) => (
+    <span>
+      {`${row.first_name || ""} ${row.last_name || ""}`.trim() ||
+        row.username || // Added username as a backup
+        row.name ||
+        "N/A"}
+    </span>
+  );
+
   if (filter === "linkedStorefront") {
     return [
-      { header: "Creator Name", key: "creator", sortable: true },
-      { header: "Storefront Name", key: "storefront" },
+      {
+        header: "Creator Name",
+        key: "first_name", // MUST EXIST
+        sortable: true,
+        className: "text-gray-900 font-medium",
+        render: renderCreatorName,
+      },
+      {
+        header: "Storefront Name",
+        key: "storefront", // FIXED
+        render: (val) =>
+          val === "No Store" ? (
+            <span className="text-gray-400 italic">No Store</span>
+          ) : (
+            val
+          ),
+      },
       { header: "Products", key: "products", sortable: true },
-      { header: "Monthly Sales", key: "monthlySales", sortable: true },
+      {
+        header: "Monthly Sales",
+        key: "total_sales",
+        sortable: true,
+        render: (val) => `₦${Number(val || 0).toLocaleString()}`,
+      },
       { header: "Conversion Rate", key: "conversionRate" },
-      { header: "Status", key: "status" },
+      {
+        header: "Status",
+        key: "status",
+        render: (_, row) => <StatusCapsule value={row.status} />,
+      },
     ];
   }
 
@@ -545,102 +612,34 @@ const getCreatorsColumns = (filter) => {
       key: "name",
       sortable: true,
       className: "text-gray-900 font-medium",
-      render: (_, row) => (
-        <span>
-          {`${row.first_name || ""} ${row.last_name || ""}`.trim() ||
-            row.name ||
-            "N/A"}
-        </span>
-      ),
+      render: renderCreatorName,
     },
     { header: "Followers", key: "followers", sortable: true },
-    { header: "Storefront", key: "storefront", sortable: true },
+    {
+      header: "Storefront",
+      key: "storefront", // Match backend key
+      sortable: true,
+      render: (val) => val || "No Store",
+    },
     {
       header: "Total Sales",
-      key: "sales",
+      key: "total_sales", // Match backend key
       sortable: true,
+      render: (val) => `₦${Number(val || 0).toLocaleString()}`,
     },
     {
       header: "Referral Bonus",
       key: "referal_bonus",
       sortable: true,
     },
+    {
+      header: "Status",
+      key: "status",
+      sortable: true,
+      render: (_, row) => <StatusCapsule value={row.status} />,
+    },
   ];
 };
-
-// ============================================================================
-// STATS
-// ============================================================================
-
-const creatorsStats = [
-  {
-    title: "Total Creators",
-    value: "1,245",
-    change: 8.2,
-    description: "+8.2% from last month",
-    bgColor: { bgColor: "rgb(244, 232, 255)", textColor: "text-purple-700" },
-    Icon: Users,
-  },
-  {
-    title: "Active Creators",
-    value: "892",
-    change: 12.4,
-    description: "+12.4% from last month",
-    bgColor: { bgColor: "rgb(235, 247, 250)", textColor: "text-blue-700" },
-    Icon: Users,
-  },
-  {
-    title: "Total Products",
-    value: "15,678",
-    change: 5.1,
-    description: "+5.1% from last month",
-    bgColor: { bgColor: "rgb(235, 253, 245)", textColor: "text-green-700" },
-    Icon: Tag,
-  },
-  {
-    title: "Total Revenue",
-    value: "$5.8M",
-    change: 16.8,
-    description: "+16.8% from last month",
-    bgColor: { bgColor: "rgb(255, 249, 229)", textColor: "text-yellow-700" },
-    Icon: DollarSign,
-  },
-];
-
-const brandsStats = [
-  {
-    title: "Total Brands",
-    value: "1,245",
-    change: 8.2,
-    description: "+8.2% from last month",
-    bgColor: { bgColor: "rgb(244, 232, 255)", textColor: "text-purple-700" },
-    Icon: Building2,
-  },
-  {
-    title: "Total Products",
-    value: "15,678",
-    change: 12.4,
-    description: "+12.4% from last month",
-    bgColor: { bgColor: "rgb(235, 247, 250)", textColor: "text-blue-700" },
-    Icon: Tag,
-  },
-  {
-    title: "Active Campaigns",
-    value: "156",
-    change: 5.1,
-    description: "+5.1% from last month",
-    bgColor: { bgColor: "rgb(235, 253, 245)", textColor: "text-green-700" },
-    Icon: Store,
-  },
-  {
-    title: "Total Wallet Balance",
-    value: "$5.8M",
-    change: 16.8,
-    description: "+16.8% from last month",
-    bgColor: { bgColor: "rgb(255, 249, 229)", textColor: "text-yellow-700" },
-    Icon: DollarSign,
-  },
-];
 
 // ============================================================================
 // DROPDOWN FILTER OPTIONS
@@ -673,13 +672,11 @@ const filterConfigs = {
   creators: [
     {
       type: "dropdown",
-      key: "verified",
+      key: "status",
       label: "Status",
       options: [
-        { label: "All Status", value: "allStatus" },
         { label: "Active", value: "active" },
-        { label: "Pending", value: "pending" },
-        { label: "Suspended", value: "false" },
+        { label: "Suspended", value: "suspended" },
       ],
     },
     {
@@ -694,21 +691,21 @@ const filterConfigs = {
     },
     {
       type: "dropdown",
-      key: "verifiedStatus",
+      key: "is_email_verified",
       label: "Verified Status",
       options: [
         { label: "All", value: "all" },
-        { label: "Verified", value: "withVerified" },
-        { label: "Not Verified", value: "withoutVerified" },
+        { label: "Verified", value: "1" },
+        { label: "Not Verified", value: "0" },
       ],
     },
-    {
-      type: "range",
-      minKey: "minFollowers",
-      maxKey: "maxFollowers",
-      label: "Follower Range",
-      disabled: true,
-    },
+    // {
+    //   type: "range",
+    //   minKey: "minFollowers",
+    //   maxKey: "maxFollowers",
+    //   label: "Follower Range",
+    //   disabled: true,
+    // },
     {
       type: "range",
       minKey: "minSales",
@@ -720,12 +717,10 @@ const filterConfigs = {
   brands: [
     {
       type: "dropdown",
-      key: "plan",
+      key: "status",
       label: "Status",
       options: [
-        { label: "All Status", value: "allStatus" },
         { label: "Active", value: "active" },
-        { label: "Pending", value: "pending" },
         { label: "Suspended", value: "suspended" },
       ],
     },
@@ -737,23 +732,23 @@ const filterConfigs = {
       label: "Product Count",
       disabled: true,
     },
-    {
-      type: "range",
-      minKey: "minCampaign",
-      maxKey: "maxCampaign",
-      label: "Campaign Count",
-      disabled: true,
-    },
+    // {
+    //   type: "range",
+    //   minKey: "minCampaign",
+    //   maxKey: "maxCampaign",
+    //   label: "Campaign Count",
+    //   disabled: true,
+    // },
     {
       type: "range",
       minKey: "minBalance",
       maxKey: "maxBalance",
       label: "Wallet Balance",
-      disabled: true,
+      disabled: false,
     },
     {
       type: "dropdown",
-      key: "plan",
+      key: "dateJoined",
       label: "Date Joined",
       options: [{ label: "All Time", value: "allTime" }],
     },
@@ -812,6 +807,7 @@ export default function UserManagementPage() {
   const [showCreatorDetailsModal, setShowCreatorDetailsModal] = useState(false);
   const [showBrandDetailsModal, setShowBrandDetailsModal] = useState(false);
   const [showBrandWalletModal, setShowBrandWalletModal] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [filters, setFilters] = useState({
     status: "",
@@ -832,6 +828,7 @@ export default function UserManagementPage() {
     date_from: null,
     date_to: null,
     role: ROLE_MAP[currentType],
+    filter: currentFilter,
   });
 
   useEffect(() => {
@@ -840,19 +837,71 @@ export default function UserManagementPage() {
     console.log("Query Sent:", query);
   }, [currentType, query]);
 
-  const useRealData = currentFilter === "all";
+  const useRealData =
+    currentType === "creators" ||
+    currentFilter === "all" ||
+    currentFilter === "linkedStorefront" ||
+    currentFilter === "suspended";
 
   useEffect(() => {
     setQuery((prev) => ({
       ...prev,
       role: ROLE_MAP[currentType],
+      filter: currentFilter, // now properly updates
       page: 1,
     }));
-  }, [currentType]);
+  }, [currentType, currentFilter]);
 
-  const { users, loading, pagination } = useUserList(
-    useRealData ? query : { role: ROLE_MAP[currentType], page: 1, limit: 20 }
+  const {
+    users,
+    loading: usersLoading,
+    pagination,
+  } = useUserList(
+    useRealData
+      ? { ...query } // real query already has filter
+      : { ...query, filter: query.filter || "" }, // ensure filter is included even in fallback
   );
+  const {
+    creatorsStats,
+    brandsStats,
+    loading: statsLoading,
+  } = useDashboardStats();
+
+  const isInitialLoading = usersLoading || statsLoading;
+
+  if (isInitialLoading && users.length === 0) {
+    return <DashboardLoader />;
+  }
+
+  const mappedStats = useMemo(() => {
+    const applyStyles = (statsArray) => {
+      return (statsArray || []).map((stat) => {
+        // Get styles based on the title, or use a default gray fallback
+        const style = STAT_STYLES[stat.title] || {
+          bg: "#f3f4f6",
+          text: "text-gray-700",
+        };
+
+        return {
+          ...stat,
+          // Match the shape expected by StatCard: { bgColor: "...", textColor: "..." }
+          bgColor: {
+            bgColor: style.bg,
+            textColor: style.text,
+          },
+          CardIcon: iconMap[stat.iconName] || TrendingUp,
+          // Ensure description exists to avoid empty space
+          description: stat.description || "Updated just now",
+        };
+      });
+    };
+
+    return {
+      creatorsStats: applyStyles(creatorsStats),
+      brandsStats: applyStyles(brandsStats),
+    };
+  }, [creatorsStats, brandsStats]);
+  console.log("stats", creatorsStats, brandsStats);
 
   const tableData = useMemo(() => {
     if (useRealData) return users;
@@ -863,6 +912,7 @@ export default function UserManagementPage() {
       return generateDummyCreatorsData(currentFilter);
     return [];
   }, [currentType, currentFilter, useRealData, users]);
+  console.log("UserData", tableData);
 
   const tableColumns = useMemo(() => {
     if (currentType === "buyers") return getBuyersColumns(currentFilter);
@@ -968,26 +1018,33 @@ export default function UserManagementPage() {
 
       actionMap[actionKey]?.();
     },
-    [currentType]
+    [currentType],
   );
 
-  const handleExport = async (options) => {
-    console.log("Exporting with options:", options);
+  const onExportData = async (exportOptions) => {
+    await handleExport({
+      entityType: currentType, // 'buyers', 'creators', or 'brands'
+      data: users, // Your table data
+      format: exportOptions.format,
+      fields: exportOptions.fields,
+      selections: exportOptions.selections,
+      filename: `${currentType}_${new Date().toISOString().split("T")[0]}`,
+    });
   };
 
-  const stats =
-    currentType === "creators"
-      ? creatorsStats
-      : currentType === "brands"
-      ? brandsStats
-      : [];
+  // const stats =
+  //   currentType === "creators"
+  //     ? creatorsStats
+  //     : currentType === "brands"
+  //       ? brandsStats
+  //       : [];
   const basePath = `/users?type=${currentType}`;
   const filterList =
     currentType === "brands"
       ? brandFilters
       : currentType === "creators"
-      ? creatorFilters
-      : userFilters;
+        ? creatorFilters
+        : userFilters;
 
   const activeFilters = filterList.map((f) => ({
     ...f,
@@ -1001,8 +1058,8 @@ export default function UserManagementPage() {
     currentType === "buyers"
       ? "All Users"
       : currentType === "creators"
-      ? "All Creators"
-      : "All Brands";
+        ? "All Creators"
+        : "All Brands";
 
   // Determine if the current tab is a linked tab for creators
   const isLinkedStoreFront = currentFilter === "linkedStorefront";
@@ -1036,14 +1093,30 @@ export default function UserManagementPage() {
           {exportLabel}
         </button>
       </div>
-
-      {stats.length > 0 && (
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          {stats.map((stat, i) => (
+      {/* ✅ Show stats for creators */}
+      {currentType === "creators" && (
+        <div className="grid grid-cols-3 gap-6 mb-6">
+          {mappedStats.creatorsStats.map((stat, i) => (
             <StatCard key={i} {...stat} />
           ))}
         </div>
       )}
+
+      {/* ✅ Show stats for brands */}
+      {currentType === "brands" && (
+        <div className="grid grid-cols-3 gap-6 mb-6">
+          {mappedStats.brandsStats.map((stat, i) => (
+            <StatCard key={i} {...stat} />
+          ))}
+        </div>
+      )}
+      {/* {stats.length > 0 && (
+        <div className="grid grid-cols-3 gap-12 mb-6">
+          {stats.map((stat, i) => (
+            <StatCard key={i} {...stat} />
+          ))}
+        </div>
+      )} */}
 
       <PillFilterGroup active={currentFilter} items={activeFilters} />
 
@@ -1053,7 +1126,7 @@ export default function UserManagementPage() {
           selected={selectedFilters}
           onToggle={(v) =>
             setSelectedFilters((p) =>
-              p.includes(v) ? p.filter((x) => x !== v) : [...p, v]
+              p.includes(v) ? p.filter((x) => x !== v) : [...p, v],
             )
           }
           onClose={() => setShowFilterDropdown(false)}
@@ -1064,8 +1137,14 @@ export default function UserManagementPage() {
         title={tableTitle}
         columns={tableColumns}
         data={tableData}
-        loading={useRealData ? loading : false}
+        loading={useRealData ? isInitialLoading : false}
         showSearch={!isLinkedTab && !isBrandsTab}
+        onSearchChange={(val) => {
+          setSearchTerm(val);
+          if (useRealData) {
+            setQuery((q) => ({ ...q, page: 1, search: val }));
+          }
+        }}
         showFilter={!isLinkedTab && !isBrandsTab}
         showActions={!isLinkedTab && !isBrandsTab}
         searchPlaceholder={searchPlaceholder}
@@ -1074,9 +1153,6 @@ export default function UserManagementPage() {
           useRealData
             ? pagination
             : { currentPage: 1, totalPages: 1, totalItems: tableData.length }
-        }
-        onSearch={(value) =>
-          useRealData && setQuery((q) => ({ ...q, page: 1, search: value }))
         }
         onPageChange={(page) =>
           useRealData && setQuery((q) => ({ ...q, page }))
@@ -1091,9 +1167,18 @@ export default function UserManagementPage() {
         onClose={() => setShowFilterModal(false)}
         filters={filters}
         setFilters={setFilters}
+        // onApply={() => {
+        //   // This will now trigger your useUserList hook because 'filters' is a dependency
+        //   console.log("Applying filters:", filters);
+        //   setShowFilterModal(false);
+        // }}
         onApply={() => {
-          // This will now trigger your useUserList hook because 'filters' is a dependency
-          console.log("Applying filters:", filters);
+          // ⚡ This is the key: Merge the modal filters into the API query
+          setQuery((prev) => ({
+            ...prev,
+            ...filters, // This includes status, minSpent, etc.
+            page: 1, // Always reset to page 1 when filtering
+          }));
           setShowFilterModal(false);
         }}
         // Dynamically provide fields based on current tab
@@ -1107,7 +1192,8 @@ export default function UserManagementPage() {
         open={exportOpen}
         onClose={() => setExportOpen(false)}
         config={exportConfigs[currentType]}
-        onExport={(data) => console.log("Exporting:", data)}
+        // onExport={(data) => console.log("Exporting:", data)}
+        onExport={onExportData}
       />
 
       {/* Real Data Modals for All Roles */}

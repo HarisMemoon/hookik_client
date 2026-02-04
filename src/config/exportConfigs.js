@@ -1,3 +1,4 @@
+// src/config/exportConfigs.js
 export const exportConfigs = {
   buyers: {
     checkboxes: {
@@ -8,7 +9,7 @@ export const exportConfigs = {
     },
     selects: [
       {
-        key: "status",
+        key: "dateRange",
         label: "Date Range",
         options: [
           { label: "All", value: "all" },
@@ -20,6 +21,7 @@ export const exportConfigs = {
     ],
     selectDefaults: { status: "all" },
   },
+
   creators: {
     checkboxes: {
       basicInformation: true,
@@ -29,31 +31,31 @@ export const exportConfigs = {
       RefferalData: true,
     },
   },
+
   brands: {
     checkboxes: {
       basicInformation: true,
       productStatistics: true,
-      campaignData: true,
       walletTransactions: true,
-      teamMembers: true,
     },
     selects: [],
     selectDefaults: {},
   },
+
+  // ✅ FIXED: Dropdown-only config
   storefront: {
     selects: [
       {
         key: "reportType",
         label: "Report Type",
         options: [
-          { label: "All Storefront", value: "all" },
-          { label: "Active", value: "active" },
-          { label: "Suspended", value: "suspended" },
+          { label: "All Storefronts", value: "all" }, // ✅ Maps to FIELD_MAPPINGS.storefront.all
+          { label: "Active", value: "active" }, // ✅ Maps to FIELD_MAPPINGS.storefront.active
+          { label: "Suspended", value: "suspended" }, // ✅ Maps to FIELD_MAPPINGS.storefront.suspended
         ],
-        selectDefaults: { status: "all" },
       },
       {
-        key: "status",
+        key: "dateRange",
         label: "Date Range",
         options: [
           { label: "All", value: "all" },
@@ -61,20 +63,17 @@ export const exportConfigs = {
           { label: "One month ago", value: "oneMonthAgo" },
           { label: "One year ago", value: "oneYearAgo" },
         ],
-        selectDefaults: { status: "all" },
       },
     ],
+    selectDefaults: { reportType: "all", status: "all" },
   },
+
   productListings: {
     selects: [
       {
         key: "productScope",
         label: "Product Selection",
-        options: [
-          { label: "All Products", value: "all" },
-          { label: "Selected Products", value: "selected" },
-        ],
-        selectDefaults: { status: "all" },
+        options: [{ label: "All Products", value: "all" }],
       },
     ],
     checkboxes: {
@@ -83,7 +82,9 @@ export const exportConfigs = {
       stockLevels: false,
       brandInformation: false,
     },
+    selectDefaults: { productScope: "all" },
   },
+
   orders: {
     selects: [
       {
@@ -104,8 +105,8 @@ export const exportConfigs = {
           { label: "One month ago", value: "oneMonthAgo" },
           { label: "One year ago", value: "oneYearAgo" },
         ],
-        selectDefaults: { status: "all" },
       },
     ],
+    selectDefaults: { orderStatus: "all", dateRange: "all" },
   },
 };

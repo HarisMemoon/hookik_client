@@ -37,16 +37,16 @@ export default function StorefrontDetailsModal({ open, onClose, storefront }) {
         </div>
         <div>
           <p className="text-lg text-gray-600 mb-1">Total Products</p>
-          <p className="text-lg font-bold">{storefront.products || "45"}</p>
+          <p className="text-lg font-bold">{storefront.owner.total_products}</p>
         </div>
-        <div>
+        {/* <div>
           <p className="text-lg text-gray-600 mb-1">Conversion Rate</p>
           <p className="text-lg font-bold">8.5%</p>
         </div>
         <div>
           <p className="text-lg text-gray-600 mb-1">Traffic</p>
           <p className="text-lg font-bold">12.5K</p>
-        </div>
+        </div> */}
       </div>
     </Modal>
   );

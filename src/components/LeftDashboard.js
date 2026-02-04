@@ -38,15 +38,23 @@ const navItems = [
     ],
   },
   { name: "Storefront Management", icon: Store, href: "/storefronts" },
-  { name: "Campaign Management", icon: Presentation, href: "/capaignfronts" },
+  // { name: "Campaign Management", icon: Presentation, href: "/capaignfronts" },
   { name: "Product Listings", icon: Box, href: "/products" },
-  { name: "Referral Campaign", icon: Presentation, href: "/referalcapaign" },
+  { name: "Referral Campaign", icon: Presentation, href: "/referalCampaign" },
   { name: "Orders & Transactions", icon: ArrowRightLeft, href: "/orders" },
   { name: "Pay-outs", icon: CreditCard, href: "/payouts" },
-  { name: "Ticket", icon: Ticket, href: "/ticket" },
-  { name: "Support Tickets", icon: BadgeCheck, href: "/supporttickets" },
+  // { name: "Ticket", icon: Ticket, href: "/ticket" },
+  {
+    name: "Support Tickets",
+    icon: BadgeCheck,
+    href: "/supportTickets", // This will be adjusted in useEffect for Super Admins
+  },
+  {
+    name: "Role Management",
+    icon: ShieldHalf,
+    href: "/roleManagement",
+  },
   { name: "System Logs", icon: ClipboardClock, href: "/logs" },
-  { name: "Role Management", icon: ShieldHalf, href: "/roles" },
   { name: "General Settings", icon: Settings, href: "/settings" },
 ];
 
@@ -191,6 +199,35 @@ const NavItem = ({ item, isCollapsed }) => {
 export default function LeftDashboard({ isCollapsed, setIsCollapsed }) {
   const sidebarWidth = isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH;
 
+  const [visibleNavItems, setVisibleNavItems] = useState([]);
+  useEffect(() => {
+    // 1. Get user data
+    const adminUser = JSON.parse(localStorage.getItem("admin_user") || "{}");
+    const isSuperAdmin =
+      adminUser.role === "super_admin" || adminUser.role_id === 1;
+
+    // 2. Filter and Map the navigation items
+    const filtered = navItems
+      .filter((item) => {
+        // Only show protected items if user is Super Admin
+        if (item.superAdminOnly) {
+          return isSuperAdmin;
+        }
+        return true;
+      })
+      .map((item) => {
+        // 3. Dynamic Href: If Super Admin, point to the Admin version of Support Tickets
+        if (item.name === "Support Tickets" && isSuperAdmin) {
+          return { ...item, href: "/supportTicketsAdmin" };
+        }
+        if (item.name === "Role Management" && isSuperAdmin) {
+          return { ...item, href: "/roleManagementAdmin" };
+        }
+        return item;
+      });
+
+    setVisibleNavItems(filtered);
+  }, []);
   // Auto-collapse on small screens
   useEffect(() => {
     const handleResize = () => {
@@ -304,7 +341,7 @@ export default function LeftDashboard({ isCollapsed, setIsCollapsed }) {
 
         {/* Navigation with Custom Scrollbar */}
         <nav className="flex-1 overflow-y-auto custom-scrollbar pb-4">
-          {navItems.map((item, index) => (
+          {visibleNavItems.map((item, index) => (
             <NavItem key={index} item={item} isCollapsed={isCollapsed} />
           ))}
         </nav>
