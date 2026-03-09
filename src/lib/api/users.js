@@ -42,3 +42,54 @@ export async function fetchUserList(query = {}) {
   // Returns: { users: [...], total: 100, limit: 10, offset: 0 }
   return res.json();
 }
+export async function createUser(formData) {
+  const token = localStorage.getItem("admin_token");
+
+  if (!token) {
+    throw new Error("Authentication token not found.");
+  }
+  const url = `${BASE_URL}/users`;
+  console.log("Posting to:", url);
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.message || "Failed to create user");
+  }
+
+  return data;
+}
+
+// src/lib/api/users.js
+export async function updateUser(id, formData) {
+  const token = localStorage.getItem("admin_token");
+  if (!token) throw new Error("Authentication token not found.");
+
+  const res = await fetch(`${BASE_URL}/users/${id}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (res.status === 401) {
+    localStorage.removeItem("admin_token");
+    localStorage.removeItem("admin_user");
+    throw new Error("Session expired. Please log in again.");
+  }
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to update user");
+
+  return data;
+}

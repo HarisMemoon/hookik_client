@@ -29,7 +29,7 @@ export default function UserDetailsModal({ open, onClose, user }) {
       open={open}
       onClose={onClose}
       title="User Details"
-      size="sm" // Increased size to accommodate the table
+      size="sm"
       footer={
         <div className="flex justify-end gap-3 w-full">
           <button

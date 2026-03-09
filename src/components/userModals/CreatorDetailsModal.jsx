@@ -1,10 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import StatusCapsule from "../ui/StatusCapsule";
+import AddUserModal from "./AddUserModal";
 
 export default function CreatorProfileModal({ open, onClose, creator }) {
   if (!open || !creator) return null;
-  console.log("creator:", creator);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleOpenEdit = () => {
+    setIsEditModalOpen(true);
+  };
 
   const performanceMetrics = [
     { label: "Conversion Rate", value: "8.5%", progress: 85 },
@@ -31,6 +38,8 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
     { name: "FashionHub", match: "95% compatibility match" },
     { name: "BeautyPro", match: "88% compatibility match" },
   ];
+  const labelStyles =
+    "text-[12px] font-black text-gray-400  tracking-widest mb-1";
 
   const footer = (
     <div className="flex justify-end gap-3 w-full">
@@ -40,60 +49,113 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
       >
         Close
       </button>
-      <button className="px-6 py-2 text-sm font-medium bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition">
+      <button
+        className="px-6 py-2 text-sm font-medium bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition"
+        onClick={handleOpenEdit}
+      >
         Edit Profile
       </button>
     </div>
   );
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Creator Profile"
-      subtitle={`Complete information about ${
-        creator.first_name || "Sarah Johnson"
-      }`}
-      size="sm"
-      footer={footer}
-    >
-      {/* 🔧 Removed internal scroll — smoother UX */}
-      <div className="max-h-[70vh] overflow-y-auto  pr-2 space-y-6 theme-scroll">
-        <div className="space-y-6 mr-5">
-          {/* Header Grid Info */}
-          <div className="grid grid-cols-2 gap-y-4 border-b border-gray-50 pb-6 ">
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Creator Name</p>
-              <p className="text-sm font-bold text-gray-900">
-                {creator.first_name} {creator.last_name}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Followers</p>
-              <p className="text-sm font-bold text-gray-900">0</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Total Sales</p>
-              <p className="text-sm font-bold text-gray-900">
-                {creator.total_sales}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Referral Bonus</p>
-              <p className="text-sm font-bold text-gray-900">₦125,000</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-400 mb-0.5">Storefront Status</p>
-              {creator.storefront == "No Store" ? (
-                <StatusCapsule value="disabled" />
-              ) : (
-                <StatusCapsule value="active" />
-              )}
-            </div>
-          </div>
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        title="Creator Profile"
+        subtitle={`Basic Info `}
+        size="md"
+        footer={footer}
+      >
+        {/* 🔧 Removed internal scroll — smoother UX */}
+        <div className="max-h-[70vh] overflow-y-auto  pr-2 space-y-6 theme-scroll">
+          <div className="space-y-6 mr-5">
+            {/* Header Grid Info */}
+            <div className="space-y-6">
+              {/* Header: Profile Picture & Identity */}
+              <div className="flex items-center gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                <div className="relative w-20 h-20 rounded-2xl overflow-hidden border-2 border-white shadow-sm bg-purple-50 flex items-center justify-center">
+                  {creator.profile_picture ? (
+                    <img
+                      src={creator.profile_picture}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-purple-300 text-3xl font-black">
+                      {creator.first_name?.charAt(0)}
+                      {creator.last_name?.charAt(0)}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-gray-900 leading-tight">
+                    {creator.first_name} {creator.last_name}
+                  </h3>
+                  <p className="text-sm font-medium text-purple-600">
+                    Hookik {creator.role || "Influencer"}
+                  </p>
+                </div>
+              </div>
 
-          {/* Performance Metrics */}
-          {/* <div>
+              {/* Main Information Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 px-1">
+                <div>
+                  <p className={labelStyles}>Email Address</p>
+                  <p className="text-sm font-bold text-gray-800 truncate">
+                    {creator.email}
+                  </p>
+                </div>
+
+                <div>
+                  <p className={labelStyles}>Total Sales</p>
+                  <p className="text-sm font-black text-gray-900">
+                    {Number(creator.total_sales || 0).toLocaleString()}
+                  </p>
+                </div>
+
+                <div>
+                  <p className={labelStyles}>Date Joined</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {new Date(creator.created_at).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+
+                <div>
+                  <p className={labelStyles}>Country</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {creator.country || "Not Provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className={labelStyles}>City</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {creator.city || "Not Provided"}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">
+                    Storefront Status
+                  </p>
+
+                  {creator.storefront == "No Store" ? (
+                    <StatusCapsule value="disabled" />
+                  ) : (
+                    <StatusCapsule value="active" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Performance Metrics */}
+            {/* <div>
             <h4 className="text-sm font-bold text-gray-900 mb-4">
               Performance Metrics
             </h4>
@@ -119,8 +181,8 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
             </div>
           </div> */}
 
-          {/* Recent Campaigns */}
-          {/* <div>
+            {/* Recent Campaigns */}
+            {/* <div>
             <h4 className="text-sm font-bold text-gray-900 mb-3">
               Recent Campaigns
             </h4>
@@ -166,8 +228,8 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
             </div>
           </div> */}
 
-          {/* AI Recommendations */}
-          {/* <div>
+            {/* AI Recommendations */}
+            {/* <div>
             <h4 className="text-sm font-bold text-gray-900 mb-3">
               AI-Recommended Brand Collaborations
             </h4>
@@ -193,15 +255,26 @@ export default function CreatorProfileModal({ open, onClose, creator }) {
             </div>
           </div> */}
 
-          {/* Referral Balance */}
-          {/* <div className="pt-4 border-t border-gray-50">
+            {/* Referral Balance */}
+            {/* <div className="pt-4 border-t border-gray-50">
             <p className="text-xs text-gray-400 mb-0.5">
               Referral Wallet Balance
             </p>
             <p className="text-lg font-bold text-gray-900">₦125,000</p>
           </div> */}
+          </div>
         </div>
-      </div>
-    </Modal>
+      </Modal>
+      <AddUserModal
+        open={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setRefreshKey((prev) => prev + 1);
+        }}
+        user={creator}
+        role="influencer"
+        type="edit"
+      />
+    </>
   );
 }

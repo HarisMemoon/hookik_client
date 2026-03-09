@@ -222,10 +222,10 @@ export default function DashboardPage() {
                   badgeStyle = "text-blue-700 bg-blue-100";
                 }
 
-                const fullName = `${payout.User.first_name} ${payout.User.last_name}`;
+                const fullName = `${payout.User?.first_name} ${payout.User?.last_name}`;
                 const roleDisplay =
-                  payout.User.role.charAt(0).toUpperCase() +
-                  payout.User.role.slice(1);
+                  payout.User?.role.charAt(0).toUpperCase() +
+                  payout.User?.role.slice(1);
 
                 return (
                   <div

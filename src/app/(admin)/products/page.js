@@ -36,6 +36,25 @@ const allProductColumns = [
     key: "name",
     sortable: true,
     className: "font-medium text-gray-900",
+    render: (_, row) => (
+      <div className="flex items-center gap-3">
+        {/* Thumbnail Container */}
+        <div className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-100 overflow-hidden flex-shrink-0">
+          {row.displayImage ? (
+            <img
+              src={row.displayImage}
+              alt={row.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-bold bg-gray-50">
+              NO IMG
+            </div>
+          )}
+        </div>
+        <span className="truncate max-w-[150px]">{row.name}</span>
+      </div>
+    ),
   },
   { header: "Brand", key: "owner" },
   {
@@ -156,6 +175,8 @@ export default function ProductManagementPage() {
   // 🔹 3. Map Database Data to Table Format
   const tableData = products.map((p) => ({
     ...p,
+    displayImage:
+      p.images && p.images.length > 0 ? p.images[0].image_url : null,
     owner: p.brandOwner
       ? `${p.brandOwner.first_name} ${p.brandOwner.last_name}`
       : "Unknown",

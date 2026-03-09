@@ -34,25 +34,57 @@ export async function fetchProductList(query = {}) {
   if (!res.ok) throw new Error(`Failed to fetch products: ${res.statusText}`);
   return res.json();
 }
+// export async function updateProductDetails(id, formData) {
+//   const token = localStorage.getItem("admin_token");
+
+//   const res = await fetch(`${BASE_URL}/products/${id}`, {
+//     method: "PUT",
+//     headers: {
+//       "Content-Type": "application/json",
+//       Authorization: `Bearer ${token}`,
+//     },
+//     body: JSON.stringify(formData),
+//   });
+
+//   // NEW DEBUGGING LOGIC
+//   if (!res.ok) {
+//     const errorData = await res.json().catch(() => ({})); // Try to parse error JSON
+//     console.error("Server Error Data:", errorData); // Look at this in Browser Console
+//     throw new Error(errorData.message || "Failed to update product");
+//   }
+
+//   return res.json();
+// }
+
 export async function updateProductDetails(id, formData) {
   const token = localStorage.getItem("admin_token");
-  console.log("=== UPDATE PRODUCT API CALL ===");
-  console.log("Product ID:", id);
-  console.log("Form Data:", formData);
-  console.log("URL:", `${BASE_URL}/products/${id}`);
+
+  const payload = new FormData();
+
+  // Append all fields properly
+  Object.keys(formData).forEach((key) => {
+    if (key === "image_url") return;
+    const value = formData[key];
+
+    // Skip null/undefined
+    if (value === null || value === undefined) return;
+
+    payload.append(key, value);
+  });
+  for (let [key, value] of payload.entries()) {
+    console.log(key, value);
+  }
+
   const res = await fetch(`${BASE_URL}/products/${id}`, {
     method: "PUT",
     headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token}`, // ❗ DO NOT SET Content-Type
     },
-    body: JSON.stringify(formData),
+    body: payload,
   });
 
-  // NEW DEBUGGING LOGIC
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({})); // Try to parse error JSON
-    console.error("Server Error Data:", errorData); // Look at this in Browser Console
+    const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.message || "Failed to update product");
   }
 

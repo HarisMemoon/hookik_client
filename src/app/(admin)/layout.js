@@ -4,6 +4,7 @@ import { useState } from "react";
 import LeftDashboard from "@/components/LeftDashboard";
 import TopNavbar from "@/components/TopNavbar";
 import AuthGuard from "@/components/AuthGuard";
+import { Toaster } from "react-hot-toast";
 
 const EXPANDED = 256;
 const COLLAPSED = 72;
@@ -39,7 +40,10 @@ export default function AdminLayout({ children }) {
             adminInitials={adminData.initials}
             adminRole={adminData.role}
           />
-          <div className="flex-1 ">{children}</div>
+          <div className="flex-1 ">
+            {children}
+            <Toaster position="top-right" reverseOrder={false} />
+          </div>
         </div>
       </div>
     </AuthGuard>

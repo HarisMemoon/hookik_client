@@ -13,9 +13,9 @@ export default function StorefrontDetailsModal({ open, onClose, storefront }) {
       >
         Close
       </button>
-      <button className="px-6 py-2 text-sm font-medium bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition">
+      {/* <button className="px-6 py-2 text-sm font-medium bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition">
         Edit Storefront
-      </button>
+      </button> */}
     </div>
   );
 

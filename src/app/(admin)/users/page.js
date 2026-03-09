@@ -11,13 +11,14 @@ import {
   Download,
   TrendingUp,
   Box,
+  CirclePlus,
 } from "lucide-react";
-
 import PillFilterGroup from "@/components/PillFilterGroup";
 import GenericTable from "@/components/GenericTable";
 import StatCard from "@/components/StatCard";
 import GenericFilterModal from "@/components/GenericFilterModal";
 import ExportModal from "@/components/ExportModal";
+import TableLoader from "@/components/TableLoader";
 import TableFilterDropdown from "@/components/TableFilterDropdown";
 import useUserList from "@/hooks/useUserList";
 import UserDetailsModal from "@/components/userModals/UserDetailsModal";
@@ -28,11 +29,17 @@ import ManageStorefrontModal from "@/components/userModals/ManageStorefrontModal
 import CreatorDetailsModal from "@/components/userModals/CreatorDetailsModal";
 import BrandDetailsModal from "@/components/userModals/BrandDetailsModal";
 import BrandWalletModal from "@/components/userModals/BrandWalletModal";
+import AddUserModal from "@/components/userModals/AddUserModal";
+import EditProductModal from "@/components/productModals/EditProductDeatils";
 import { exportConfigs } from "@/config/exportConfigs";
 import StatusCapsule from "@/components/ui/StatusCapsule";
 import { handleExport } from "@/lib/services/exportService";
+import { updateProductDetails } from "@/lib/api/products";
+
 import useDashboardStats from "@/hooks/useStats";
 import DashboardLoader from "@/components/ui/DashboardLoader";
+import BrandProductsModal from "@/components/userModals/BrandProductsModal";
+import toast from "react-hot-toast";
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
@@ -801,13 +808,21 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showAddBrandModal, setShowAddBrandModal] = useState(false);
+  const [showAddInfluencerModal, setShowAddInfluencerModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showStorefrontModal, setShowStorefrontModal] = useState(false);
   const [showCampaignModal, setShowCampaignModal] = useState(false);
   const [showCreatorDetailsModal, setShowCreatorDetailsModal] = useState(false);
   const [showBrandDetailsModal, setShowBrandDetailsModal] = useState(false);
   const [showBrandWalletModal, setShowBrandWalletModal] = useState(false);
+  const [tabLoading, setTabLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showBrandProductsModal, setShowBrandProductsModal] = useState(false);
+  const [showEditProductsModal, setShowEditProductsModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const [filters, setFilters] = useState({
     status: "",
@@ -830,12 +845,15 @@ export default function UserManagementPage() {
     role: ROLE_MAP[currentType],
     filter: currentFilter,
   });
-
   useEffect(() => {
-    console.log("Current Tab:", currentType);
-    console.log("Mapped Role:", ROLE_MAP[currentType]);
-    console.log("Query Sent:", query);
-  }, [currentType, query]);
+    setTabLoading(true); // ← start loader on tab switch
+    setQuery((prev) => ({
+      ...prev,
+      role: ROLE_MAP[currentType],
+      filter: currentFilter,
+      page: 1,
+    }));
+  }, [currentType, currentFilter]);
 
   const useRealData =
     currentType === "creators" ||
@@ -866,6 +884,19 @@ export default function UserManagementPage() {
     brandsStats,
     loading: statsLoading,
   } = useDashboardStats();
+
+  // 3. Stop loader when usersLoading finishes
+  useEffect(() => {
+    if (!usersLoading) {
+      setTabLoading(false); // ← stop loader when data arrives
+    }
+  }, [usersLoading]);
+
+  useEffect(() => {
+    console.log("Current Tab:", currentType);
+    console.log("Mapped Role:", ROLE_MAP[currentType]);
+    console.log("Query Sent:", query);
+  }, [currentType, query]);
 
   const isInitialLoading = usersLoading || statsLoading;
 
@@ -912,7 +943,6 @@ export default function UserManagementPage() {
       return generateDummyCreatorsData(currentFilter);
     return [];
   }, [currentType, currentFilter, useRealData, users]);
-  console.log("UserData", tableData);
 
   const tableColumns = useMemo(() => {
     if (currentType === "buyers") return getBuyersColumns(currentFilter);
@@ -964,8 +994,8 @@ export default function UserManagementPage() {
       brands: {
         all: [
           { key: "view", label: "View Details" },
-          { key: "manageCampaign", label: "Manage Campaign" },
-          { key: "viewWallet", label: "View Wallet" },
+          { key: "manageProducts", label: "Manage Products" },
+          // { key: "viewWallet", label: "View Wallet" },
 
           { key: "suspend", label: "Suspend Brand", danger: true },
         ],
@@ -1000,7 +1030,7 @@ export default function UserManagementPage() {
         },
 
         email: () => setShowEmailModal(true),
-
+        manageProducts: () => setShowBrandProductsModal(true),
         suspend: () => setShowStatusModal(true),
         unsuspend: () => setShowStatusModal(true),
 
@@ -1020,6 +1050,57 @@ export default function UserManagementPage() {
     },
     [currentType],
   );
+  const handleSaveProduct = async (updatedData) => {
+    console.log("=== HANDLE SAVE PRODUCT ===");
+    console.log("Received updatedData:", updatedData);
+
+    if (!updatedData) {
+      toast.error("No data received to update");
+      return;
+    }
+
+    try {
+      const { id, ...dataToUpdate } = updatedData;
+
+      // ✅ Sanitize the price - remove currency symbols and commas
+      if (dataToUpdate.price) {
+        // Remove currency symbols, commas, and other non-numeric chars except decimal point
+        dataToUpdate.price = dataToUpdate.price
+          .toString()
+          .replace(/[₦$,\s]/g, "") // Remove ₦, $, commas, spaces
+          .trim();
+
+        // Convert to number
+        dataToUpdate.price = parseFloat(dataToUpdate.price);
+
+        // Validate
+        if (isNaN(dataToUpdate.price)) {
+          toast.error("Invalid price format");
+          return;
+        }
+      }
+
+      // ✅ Ensure stock is a number
+      if (dataToUpdate.stock) {
+        dataToUpdate.stock = parseInt(dataToUpdate.stock, 10);
+      }
+
+      console.log("Sanitized data:", dataToUpdate);
+
+      if (!id) {
+        toast.error("Product ID is missing");
+        return;
+      }
+
+      await updateProductDetails(id, dataToUpdate);
+      toast.success("Product updated successfully!");
+      setRefreshKey((prev) => prev + 1);
+      setShowEditProductsModal(false);
+    } catch (error) {
+      console.error("Error saving product:", error);
+      toast.error(error.message || "Failed to update product");
+    }
+  };
 
   const onExportData = async (exportOptions) => {
     await handleExport({
@@ -1085,13 +1166,33 @@ export default function UserManagementPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{pageTitle}</h1>
           <p className="text-gray-600 text-sm">{subtitle}</p>
         </div>
-        <button
-          className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg"
-          onClick={() => setExportOpen(true)}
-        >
-          <Download size={18} />
-          {exportLabel}
-        </button>
+        <div className="flex items-center gap-4">
+          {currentType === "creators" && (
+            <button
+              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg"
+              onClick={() => setShowAddInfluencerModal(true)}
+            >
+              <CirclePlus size={18} />
+              Add Influncer
+            </button>
+          )}
+          {currentType === "brands" && (
+            <button
+              className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg"
+              onClick={() => setShowAddBrandModal(true)}
+            >
+              <CirclePlus size={18} />
+              Add Brand
+            </button>
+          )}
+          <button
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg"
+            onClick={() => setExportOpen(true)}
+          >
+            <Download size={18} />
+            {exportLabel}
+          </button>
+        </div>
       </div>
       {/* ✅ Show stats for creators */}
       {currentType === "creators" && (
@@ -1110,13 +1211,6 @@ export default function UserManagementPage() {
           ))}
         </div>
       )}
-      {/* {stats.length > 0 && (
-        <div className="grid grid-cols-3 gap-12 mb-6">
-          {stats.map((stat, i) => (
-            <StatCard key={i} {...stat} />
-          ))}
-        </div>
-      )} */}
 
       <PillFilterGroup active={currentFilter} items={activeFilters} />
 
@@ -1132,35 +1226,42 @@ export default function UserManagementPage() {
           onClose={() => setShowFilterDropdown(false)}
         />
       )}
+      <div className="relative">
+        {tabLoading && (
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 rounded-xl">
+            <TableLoader rows={8} columns={tableColumns.length || 5} />
+          </div>
+        )}
 
-      <GenericTable
-        title={tableTitle}
-        columns={tableColumns}
-        data={tableData}
-        loading={useRealData ? isInitialLoading : false}
-        showSearch={!isLinkedTab && !isBrandsTab}
-        onSearchChange={(val) => {
-          setSearchTerm(val);
-          if (useRealData) {
-            setQuery((q) => ({ ...q, page: 1, search: val }));
+        <GenericTable
+          title={tableTitle}
+          columns={tableColumns}
+          data={tableData}
+          loading={false}
+          showSearch={!isLinkedTab && !isBrandsTab}
+          onSearchChange={(val) => {
+            setSearchTerm(val);
+            if (useRealData) {
+              setQuery((q) => ({ ...q, page: 1, search: val }));
+            }
+          }}
+          showFilter={!isLinkedTab && !isBrandsTab}
+          showActions={!isLinkedTab && !isBrandsTab}
+          searchPlaceholder={searchPlaceholder}
+          onFilterClick={() => setShowFilterModal(true)}
+          pagination={
+            useRealData
+              ? pagination
+              : { currentPage: 1, totalPages: 1, totalItems: tableData.length }
           }
-        }}
-        showFilter={!isLinkedTab && !isBrandsTab}
-        showActions={!isLinkedTab && !isBrandsTab}
-        searchPlaceholder={searchPlaceholder}
-        onFilterClick={() => setShowFilterModal(true)}
-        pagination={
-          useRealData
-            ? pagination
-            : { currentPage: 1, totalPages: 1, totalItems: tableData.length }
-        }
-        onPageChange={(page) =>
-          useRealData && setQuery((q) => ({ ...q, page }))
-        }
-        rowActions={getRowActions}
-        onActionClick={handleRowAction}
-        actionsVariant="dropdown"
-      />
+          onPageChange={(page) =>
+            useRealData && setQuery((q) => ({ ...q, page }))
+          }
+          rowActions={getRowActions}
+          onActionClick={handleRowAction}
+          actionsVariant="dropdown"
+        />
+      </div>
 
       <GenericFilterModal
         open={showFilterModal}
@@ -1195,7 +1296,38 @@ export default function UserManagementPage() {
         // onExport={(data) => console.log("Exporting:", data)}
         onExport={onExportData}
       />
-
+      <AddUserModal
+        open={showAddBrandModal}
+        onClose={() => setShowAddBrandModal(false)}
+        type="add"
+        role="seller"
+      />
+      <AddUserModal
+        open={showAddInfluencerModal}
+        onClose={() => setShowAddInfluencerModal(false)}
+        type="add"
+        role="influencer"
+      />
+      <BrandProductsModal
+        open={showBrandProductsModal}
+        brand={selectedUser}
+        onClose={() => setShowBrandProductsModal(false)}
+        onEditProduct={(action, product) => {
+          setSelectedProduct(product); // Your existing product state
+          setIsViewOnly(action === "view");
+          setShowEditProductsModal(true); // Your existing edit modal
+        }}
+      />
+      <EditProductModal
+        open={showEditProductsModal}
+        isViewOnly={isViewOnly}
+        onClose={() => {
+          setShowEditProductsModal(false);
+          setSelectedProduct(null);
+        }}
+        product={selectedProduct}
+        onSave={(id, updatedData) => handleSaveProduct(id, updatedData)}
+      />
       {/* Real Data Modals for All Roles */}
       {useRealData && (
         <>
