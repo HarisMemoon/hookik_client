@@ -57,10 +57,10 @@ export default function BrandWalletModal({ open, onClose, brand }) {
           {[
             {
               label: "Total Earned",
-              val: `$ ${brand.brand_wallet.total_earned}`,
+              val: `$ ${brand.brand_wallet?.total_earned}`,
             },
-            { label: "Pending", val: `$ ${brand.brand_wallet.pending}` },
-            { label: "Withdrawn", val: `$ ${brand.brand_wallet.withdrawn}` },
+            { label: "Pending", val: `$ ${brand.brand_wallet?.pending}` },
+            { label: "Withdrawn", val: `$ ${brand.brand_wallet?.withdrawn}` },
           ].map((stat, i) => (
             <div
               key={i}

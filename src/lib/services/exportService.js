@@ -65,6 +65,14 @@ const FIELD_MAPPINGS = {
     active: ["id", "name", "description", "user_id", "created_at"],
     suspended: ["id", "name", "description", "user_id", "created_at"],
   },
+  systemLogs: {
+    adminName: ["admin_id"], // We'll handle the name concatenation in flattenData
+    action: ["action"],
+    targetType: ["target_type"],
+    targetId: ["target_id"],
+    timestamp: ["createdAt"],
+    details: ["details"],
+  },
   productListings: {
     all: [
       "id",
@@ -130,6 +138,12 @@ const COLUMN_HEADERS = {
   grand_total: "Total Amount",
   user_id: "User ID",
   is_public: "Public",
+  admin_id: "Admin",
+  target_type: "Target Type",
+  target_id: "Target ID",
+  action: "Action Taken",
+  created_at: "Timestamp",
+  details: "Technical Details",
 };
 
 /**

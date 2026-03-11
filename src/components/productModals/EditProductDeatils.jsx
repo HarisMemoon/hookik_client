@@ -10,7 +10,7 @@ export default function EditProductModal({
   onClose,
   product,
   onSave,
-  isViewOnly = false, // New prop to toggle modes
+  isViewOnly = false,
 }) {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const fileInputRef = useRef(null);
@@ -36,7 +36,6 @@ export default function EditProductModal({
         category_id: product.category_id || product.category?.id || "",
         price: product.price || "",
         description: product.description || "",
-        // Ensure we check for 0 specifically so it doesn't default to ""
         stock: product.quantity || "",
         sku: product.sku || "N/A",
         status: product.status || "",

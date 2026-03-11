@@ -3,14 +3,18 @@
 import { useState } from "react";
 import { Mail } from "lucide-react";
 import Modal from "@/components/ui/Modal";
+import toast from "react-hot-toast";
 
 export default function SendEmailModal({ open, onClose, user, onSend }) {
+  const BASE_URL =
+    process.env.NEXT_PUBLIC_API_BASE_URL_EMAIL ||
+    "http://localhost:9292/api/send-email";
   const [form, setForm] = useState({
     to: user?.email || "",
     subject: "",
     message: "",
   });
-
+  const [loading, setLoading] = useState(false);
   const handleChange = (e) => {
     setForm((prev) => ({
       ...prev,
@@ -18,11 +22,38 @@ export default function SendEmailModal({ open, onClose, user, onSend }) {
     }));
   };
 
-  const handleSend = () => {
-    onSend?.(form); // hook for API later
-    onClose();
-  };
+  const handleSend = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("admin_token");
+    try {
+      const response = await fetch(`${BASE_URL}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          to: user.email,
+          subject: form.subject,
+          message: form.message,
+        }),
+      });
 
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Email Sent");
+        onClose();
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Error sending email");
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <Modal
       open={open}
@@ -41,10 +72,11 @@ export default function SendEmailModal({ open, onClose, user, onSend }) {
 
           <button
             onClick={handleSend}
+            disabled={loading}
             className="flex items-center gap-2 px-5 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
           >
             <Mail size={16} />
-            Send Email
+            {loading ? "Sending..." : "Send Email"}
           </button>
         </div>
       }

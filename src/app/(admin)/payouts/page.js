@@ -10,6 +10,9 @@ import ApprovePayoutModal from "@/components/payoutModals/ApprovePayoutModal";
 import PausePayoutModal from "@/components/payoutModals/PausePayoutModal";
 import usePayoutList from "@/hooks/usePayoutList";
 import StatusCapsule from "@/components/ui/StatusCapsule";
+import { approvePayout } from "@/lib/api/payouts";
+import { bulkProcessPayouts } from "@/lib/api/payouts";
+import toast from "react-hot-toast";
 
 // ============================================================================
 // CONFIG
@@ -147,8 +150,9 @@ export default function PayoutManagementPage() {
     refreshKey,
   );
   const tableData = payouts.map((p) => ({
+    id: p.id,
     ...p,
-    owner: p.user?.name || "Unknown User", // Assuming backend joins with users table
+    owner: p.owner?.first_name || "Unknown User", // Assuming backend joins with users table
     type: p.type === "earning_vendor" ? "Brand" : "Creator",
     amount: `₦${Number(p.amount).toLocaleString()}`,
     method: p.type.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
@@ -191,6 +195,33 @@ export default function PayoutManagementPage() {
         break;
       default:
         console.log(`${action} triggered for:`, row);
+    }
+  };
+  const handleApprove = async () => {
+    try {
+      console.log("Approving payout ID:", selectedRow?.id);
+
+      await approvePayout(selectedRow.id);
+
+      toast.success("Payout approved");
+
+      setActiveModal(null);
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      console.error("Approve error:", err);
+      toast.error("Failed to approve payout");
+    }
+  };
+  const handleBulkProcess = async (ids) => {
+    try {
+      await bulkProcessPayouts(ids);
+
+      toast.success("Bulk payouts processed");
+
+      setActiveModal(null);
+      setRefreshKey((prev) => prev + 1);
+    } catch (err) {
+      toast.error("Failed to process payouts");
     }
   };
 
@@ -244,8 +275,7 @@ export default function PayoutManagementPage() {
           columns={activeConfig.columns}
           data={activeConfig.data}
           // ... other props
-          showSearch
-          onSearch={onSearch}
+
           searchPlaceholder="Search by name or amount..."
           actionsVariant={activeConfig.variant}
           rowActions={activeConfig.actions}
@@ -257,7 +287,8 @@ export default function PayoutManagementPage() {
       <BulkPayoutModal
         open={activeModal === "bulk"}
         onClose={() => setActiveModal(null)}
-        pendingPayouts={pendingData}
+        pendingPayouts={tableData.filter((p) => p.status === "Pending")}
+        onProcess={handleBulkProcess}
       />
 
       <PayoutHistoryModal
@@ -279,10 +310,7 @@ export default function PayoutManagementPage() {
               }
             : { name: "", amount: 0, method: "" }
         }
-        onApprove={() => {
-          console.log("Approved");
-          setActiveModal(null);
-        }}
+        onApprove={handleApprove}
       />
 
       <PausePayoutModal

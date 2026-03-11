@@ -47,6 +47,7 @@ export default function LoginPage() {
       // 1. Store the token/user data securely (e.g., localStorage or cookies)
       localStorage.setItem("admin_token", data.token); // Assuming you add JWT token in backend response
       localStorage.setItem("admin_user", JSON.stringify(data.user));
+      localStorage.setItem("admin_role", data.user.role);
 
       // 2. Redirect to the protected dashboard page
       router.push("/"); // Change this to your actual dashboard path

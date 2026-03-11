@@ -12,7 +12,7 @@ export default function ApprovePayoutModal({
       open={open}
       onClose={onClose}
       title="Approve Payout"
-      subtitle={`Approve payout of ₦${payout?.amount.toLocaleString()} to ${
+      subtitle={`Approve payout of ${payout?.amount.toLocaleString()} to ${
         payout?.name
       }`}
       size="sm"
@@ -40,7 +40,7 @@ export default function ApprovePayoutModal({
             label: "Amount:",
             value:
               typeof payout?.amount === "number"
-                ? `₦${payout?.amount.toLocaleString()}`
+                ? `${payout?.amount.toLocaleString()}`
                 : payout?.amount || "₦0",
             bold: true,
           },

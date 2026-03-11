@@ -87,7 +87,7 @@ const brandFilters = [
   { value: "all", label: "All Brands" },
   { value: "imports", label: "Product Imports" },
   { value: "inventory", label: "Inventory Overview" },
-  { value: "team", label: "Team Members" },
+  // { value: "team", label: "Team Members" },
 ];
 
 const exportTitleMap = {
@@ -995,7 +995,7 @@ export default function UserManagementPage() {
         all: [
           { key: "view", label: "View Details" },
           { key: "manageProducts", label: "Manage Products" },
-          // { key: "viewWallet", label: "View Wallet" },
+          { key: "viewWallet", label: "View Wallet" },
 
           { key: "suspend", label: "Suspend Brand", danger: true },
         ],

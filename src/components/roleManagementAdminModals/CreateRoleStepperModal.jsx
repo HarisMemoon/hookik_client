@@ -14,6 +14,7 @@ export default function CreateRoleStepperModal({ open, onClose, onComplete }) {
     role: "User Management",
     permissions: [],
     duration: "Permanent",
+    password: "12345678",
   });
 
   // Permission Options from your screenshots
