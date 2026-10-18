@@ -25,7 +25,7 @@ export default function LoginPage() {
     setError("");
 
     // **IMPORTANT:** Replace with your actual backend URL
-    const LOGIN_API_URL = "http://localhost:9292/api/admin/auth/login";
+    const LOGIN_API_URL = `${process.env.NEXT_API_BASE_URL || "http://localhost:9292/api"}/admin/auth/login`;
 
     try {
       const response = await fetch(LOGIN_API_URL, {
