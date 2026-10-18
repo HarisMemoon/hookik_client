@@ -304,11 +304,7 @@ export default function LeftDashboard({ isCollapsed, setIsCollapsed }) {
             {!isCollapsed && (
               <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className="
-                  p-2 rounded-lg transition-all duration-200 
-                  hover:bg-white/20 active:scale-95
-                  bg-[#8937ce]/30
-                "
+                className=" p-2 rounded-lg transition-all duration-200 hover:bg-white/20 active:scale-95  bg-[#8937ce]/30"
                 style={{
                   boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
                 }}
@@ -323,12 +319,7 @@ export default function LeftDashboard({ isCollapsed, setIsCollapsed }) {
           {isCollapsed && (
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
-              className="
-                absolute -top-4 left-1/2 -translate-x-1/2
-                p-2 rounded-lg transition-all duration-200 
-                hover:bg-white/20 active:scale-95
-                bg-[#8937ce]/30
-              "
+              className=" absolute -top-4 left-1/2 -translate-x-1/2  p-2 rounded-lg transition-all duration-200  hover:bg-white/20 active:scale-95  bg-[#8937ce]/30"
               style={{
                 boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
               }}
